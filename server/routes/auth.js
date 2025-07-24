@@ -1,6 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const auth = require("../middleware/auth");
 const User = require("../models/User.model.js");
 const sendEmail = require("../utils/sendEmail.js");
 
@@ -26,15 +27,12 @@ const sendToken = (res, user) => {
   };
 };
 
-// ✅ GET /api/auth/me
-router.get("/me", require("../middleware/auth"), async (req, res) => {
+// ✅ GET /api/user/me - get current user data
+router.get("/me", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    res.status(200).json({ user });
-  } catch (error) {
+    res.json(user);
+  } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 });
