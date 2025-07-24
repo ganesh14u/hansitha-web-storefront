@@ -11,23 +11,40 @@ const cookieParser = require("cookie-parser");
 const http = require("http");
 const { Server } = require("socket.io");
 
-// Env Setup
 dotenv.config();
+
 const app = express();
+app.set("trust proxy", 1); // ✅ IMPORTANT: Trust proxy for Render to handle secure cookies
+
 const server = http.createServer(app);
+
+// CORS Setup
+const allowedOrigins = [
+  "http://localhost:8080",
+  "https://hansithacreations.netlify.app"
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
+}));
+
+// Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:8080', 'https://hansithacreations.netlify.app'],
+    origin: allowedOrigins,
     credentials: true,
   },
 });
-app.set("io", io); // expose io to routes
+app.set("io", io);
 
 // Middleware
-app.use(cors({
-  origin: ['http://localhost:8080', 'https://hansithacreations.netlify.app'],
-  credentials: true
-}));
 app.use(express.json());
 app.use(cookieParser());
 
