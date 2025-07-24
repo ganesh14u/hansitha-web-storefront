@@ -66,3 +66,5 @@ router.post('/', async (req, res) => {
     res.status(500).json({ message: error.message || 'Failed to place order' });
   }
 });
+
+module.exports = router;
