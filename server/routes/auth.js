@@ -84,7 +84,7 @@ router.post("/logout", (req, res) => {
 
   res.clearCookie("token", {
     httpOnly: true,
-    sameSite: isProd ? "None" : "Lax",
+    sameSite: "None",
     secure: isProd,
   });
 

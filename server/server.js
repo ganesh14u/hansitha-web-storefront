@@ -24,16 +24,12 @@ const allowedOrigins = [
   "https://hansithacreations.netlify.app"
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: allowedOrigins, // e.g., "https://yourfrontend.com"
+    credentials: true, // ✅ Send cookies across domains
+  })
+);
 
 // Socket.IO
 const io = new Server(server, {
