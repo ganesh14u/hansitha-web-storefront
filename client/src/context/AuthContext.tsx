@@ -29,24 +29,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshUser = async () => {
     try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/auth/me`,
-        {
-          withCredentials: true,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
+        withCredentials: true,
+      });
       const latestUser = response.data.user;
       if (latestUser) {
         setUser(latestUser);
         localStorage.setItem('user', JSON.stringify(latestUser));
       }
     } catch (error) {
-      console.warn('❌ Failed to refresh user (maybe not logged in):', error);
-      
-      // Only clear user data if it's an authentication error (401)
-      // This prevents logout on network errors or server issues
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         setUser(null);
         localStorage.removeItem('user');
@@ -59,36 +50,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (storedUser) {
       setUser(JSON.parse(storedUser));
-      setLoading(false); // ✅ Show UI immediately if local user exists
-
-      // Then refresh from DB in background
-      refreshUser();
+      refreshUser().finally(() => setLoading(false));
     } else {
-      // No user in localStorage, must fetch
       refreshUser().finally(() => setLoading(false));
     }
   }, []);
 
   const login = async (credentials: { email: string; password: string }) => {
     try {
-      if (!credentials.email || !credentials.password) {
-        return { success: false, message: 'Email and password are required' };
-      }
-
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/auth/login`,
         credentials,
         {
           withCredentials: true,
-          headers: { 'Content-Type': 'application/json' },
         }
       );
 
       const loggedInUser = response.data.user;
-      if (!loggedInUser) {
-        return { success: false, message: 'Invalid login response' };
-      }
-
       setUser(loggedInUser);
       localStorage.setItem('user', JSON.stringify(loggedInUser));
       return { success: true };
@@ -129,8 +107,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

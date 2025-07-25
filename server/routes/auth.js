@@ -32,14 +32,12 @@ const sendToken = (res, user) => {
 };
 
 // ✅ GET /api/user/me - get current user
-router.get("/me", auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select("-password");
-    res.json(user);
-  } catch {
-    res.status(500).json({ message: "Server error" });
-  }
+// Example Express route
+router.get("/me", authMiddleware, async (req, res) => {
+  const user = await User.findById(req.user.id).select("-password");
+  res.json({ user });
 });
+
 
 // ✅ POST /register
 router.post("/register", async (req, res) => {

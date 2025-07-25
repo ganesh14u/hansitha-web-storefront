@@ -7,6 +7,7 @@ import {
   useLocation,
   Navigate,
 } from "react-router-dom";
+import ProtectedRoute from "@/components/common/protectedroute";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "react-hot-toast";
@@ -224,6 +225,10 @@ const AppRoutes = () => {
         <Route path="profile" element={<AdminProfile />} />
       </Route>
 
+      {/* Protected Routes */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/account" element={<Account />} />
+      </Route>
       {/* 404 */}
       <Route path="*" element={<NotFound />} />
     </Routes>
