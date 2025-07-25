@@ -35,7 +35,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     
     try {
-      const apiUrl = `${import.meta.env.VITE_API_URL || ''}/api/user/me`;
+      const apiUrl = `${import.meta.env.VITE_API_URL || ''}/api/users/me`;
       const res = await axios.get(apiUrl, { withCredentials: true });
       
       if (res.data.user && res.data.user.wishlist) {
@@ -62,7 +62,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     
     try {
-      const apiUrl = `${import.meta.env.VITE_API_URL || ''}/api/user/wishlist`;
+      const apiUrl = `${import.meta.env.VITE_API_URL || ''}/api/users/wishlist`;
       await axios.post(
         apiUrl,
         { productId },
