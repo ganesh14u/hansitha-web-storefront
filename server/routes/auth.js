@@ -33,7 +33,7 @@ const sendToken = (res, user) => {
 
 // ✅ GET /api/user/me - get current user
 // Example Express route
-router.get("/me", authMiddleware, async (req, res) => {
+router.get("/me", auth, async (req, res) => {
   const user = await User.findById(req.user.id).select("-password");
   res.json({ user });
 });
