@@ -21,6 +21,7 @@ const server = http.createServer(app);
 // CORS Setup
 const allowedOrigins = [
   "http://localhost:8080",
+  "http://localhost:3000",
   "https://hansithacreations.netlify.app"
 ];
 

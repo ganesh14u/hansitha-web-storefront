@@ -18,7 +18,7 @@ const sendToken = (res, user) => {
   res.cookie("token", token, {
     httpOnly: true,
     secure: isProd,
-    sameSite: isProd ? "None" : "Lax",
+    sameSite: isProd ? "None" : "None", // Changed from "Lax" to "None" for local dev
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
