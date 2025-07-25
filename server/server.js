@@ -79,12 +79,10 @@ io.on("connection", (socket) => {
 });
 
 // Routes
-const authRoutes = require("./routes/auth.js");
 const userRoutes = require("./routes/user.routes.js");
 const categoryRoutes = require("./routes/categories");
 const checkoutRoutes = require("./routes/checkoutRoutes");
 const productRoutes = require("./routes/productRoutes");
-const otpRoutes = require("./routes/otpRoutes");
 const orderRoutes = require('./routes/orderRoutes');
 const wishlistRoutes = require('./routes/wishList.js');
 
@@ -93,9 +91,7 @@ app.get('/', (req, res) => res.send('API is working'));
 app.use('/api/categories', categoryRoutes);
 app.use('/api', checkoutRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use("/auth", otpRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 
