@@ -19,6 +19,8 @@ const sendToken = (res, user) => {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? "None" : "None", // Changed from "Lax" to "None" for local dev
+    domain: isProd ? ".onrender.com" : undefined,
+    path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
