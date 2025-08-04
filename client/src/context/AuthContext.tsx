@@ -26,6 +26,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (credentials: { email: string; password: string }) => Promise<void>;
+  register: (userData: { name: string; email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -34,6 +35,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   login: async () => {},
+  register: async () => {},
   logout: async () => {},
   refreshUser: async () => {},
 });
@@ -77,6 +79,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     cookieStorage.setJSON('user', res.data.user);
   };
 
+  // ✅ Register and store user
+  const register = async (userData: { name: string; email: string; password: string }) => {
+    const res = await axios.post(`${API_URL}/api/auth/register`, userData, {
+      withCredentials: true,
+    });
+    setUser(res.data.user);
+    cookieStorage.setJSON('user', res.data.user);
+  };
+
   // ✅ Logout and clear cookies
   const logout = async () => {
     await axios.post(`${API_URL}/api/auth/logout`, {}, { withCredentials: true });
@@ -88,7 +99,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
