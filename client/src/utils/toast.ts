@@ -1,8 +1,9 @@
 import { toast } from 'sonner';
+import { cookieStorage } from './cookies';
 
-// Get voice preference from localStorage (defaults to true)
+// Get voice preference from cookies (defaults to true)
 const isVoiceEnabled = () => {
-  const stored = localStorage.getItem('voice-enabled');
+  const stored = cookieStorage.getItem('voice-enabled');
   return stored !== 'false'; // if undefined or "true", return true
 };
 
