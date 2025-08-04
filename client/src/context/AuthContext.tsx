@@ -6,6 +6,7 @@ import {
   ReactNode,
 } from 'react';
 import axios from 'axios';
+import { cookieStorage } from '../utils/cookies';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -43,24 +44,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Refresh user from API and store in localStorage
+  // ✅ Refresh user from API and store in cookies
   const refreshUser = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/auth/me`, { withCredentials: true });
       setUser(res.data.user);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
+      cookieStorage.setObject('user', res.data.user);
     } catch {
       setUser(null);
-      localStorage.removeItem('user');
+      cookieStorage.removeItem('user');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
+    const storedUser = cookieStorage.getObject<User>('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      setUser(storedUser);
       setLoading(false);
     } else {
       refreshUser();
@@ -73,17 +74,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       withCredentials: true,
     });
     setUser(res.data.user);
-    localStorage.setItem('user', JSON.stringify(res.data.user));
+    cookieStorage.setObject('user', res.data.user);
   };
 
-  // ✅ Logout and clear localStorage
+  // ✅ Logout and clear cookies
   const logout = async () => {
     await axios.post(`${API_URL}/api/auth/logout`, {}, { withCredentials: true });
     setUser(null);
-    localStorage.removeItem('user');
-    // Clear cart and wishlist from localStorage on logout
-    localStorage.removeItem('cart');
-    localStorage.removeItem('wishlist');
+    cookieStorage.removeItem('user');
+    // Clear cart and wishlist from cookies on logout
+    cookieStorage.removeItem('cart');
+    cookieStorage.removeItem('wishlist');
   };
 
   return (

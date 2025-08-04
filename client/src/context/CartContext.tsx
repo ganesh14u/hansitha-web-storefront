@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import axios from "axios";
 import { useAuth } from "./AuthContext";
+import { cookieStorage } from "../utils/cookies";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -53,7 +54,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const refreshCart = async () => {
     if (!user) {
       setCartItems([]);
-      localStorage.removeItem("cart");
+      cookieStorage.removeItem("cart");
       return;
     }
 
@@ -64,14 +65,14 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       if (response.data.success) {
         const transformedCart = transformDbCartToCartItems(response.data.cart);
         setCartItems(transformedCart);
-        localStorage.setItem("cart", JSON.stringify(transformedCart));
+        cookieStorage.setObject("cart", transformedCart);
       }
     } catch (error) {
       console.error("Error fetching cart:", error);
-      // Fallback to localStorage if user is logged in but API fails
-      const savedCart = localStorage.getItem("cart");
+      // Fallback to cookies if user is logged in but API fails
+      const savedCart = cookieStorage.getObject<CartItem[]>("cart");
       if (savedCart) {
-        setCartItems(JSON.parse(savedCart));
+        setCartItems(savedCart);
       }
     }
   };
@@ -81,19 +82,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     if (user) {
       refreshCart();
     } else {
-      // If not logged in, load from localStorage
-      const savedCart = localStorage.getItem("cart");
+      // If not logged in, load from cookies
+      const savedCart = cookieStorage.getObject<CartItem[]>("cart");
       if (savedCart) {
-        setCartItems(JSON.parse(savedCart));
+        setCartItems(savedCart);
       } else {
         setCartItems([]);
       }
     }
   }, [user]);
 
-  // Save cart to localStorage on every change (for offline fallback)
+  // Save cart to cookies on every change (for offline fallback)
   useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cartItems));
+    cookieStorage.setObject("cart", cartItems);
   }, [cartItems]);
 
   // Add item to cart
@@ -129,7 +130,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         });
       }
     } else {
-      // Not logged in, update localStorage only
+      // Not logged in, update cookies only
       setCartItems((prev) => {
         const existing = prev.find((i) => i.id === item.id);
         if (existing) {
@@ -162,7 +163,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         setCartItems((prev) => prev.filter((item) => item.id !== id));
       }
     } else {
-      // Not logged in, update localStorage only
+      // Not logged in, update cookies only
       setCartItems((prev) => prev.filter((item) => item.id !== id));
     }
   };
@@ -198,7 +199,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         );
       }
     } else {
-      // Not logged in, update localStorage only
+      // Not logged in, update cookies only
       setCartItems((prev) =>
         prev.map((item) =>
           item.id === id ? { ...item, quantity } : item
@@ -225,7 +226,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         setCartItems([]);
       }
     } else {
-      // Not logged in, clear localStorage only
+      // Not logged in, clear cookies only
       setCartItems([]);
     }
   };

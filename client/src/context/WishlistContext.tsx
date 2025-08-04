@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import axios from "axios";
 import { useAuth } from "./AuthContext";
+import { cookieStorage } from "../utils/cookies";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -36,7 +37,7 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
   const refreshWishlist = async () => {
     if (!user) {
       setWishlist([]);
-      localStorage.removeItem("wishlist");
+      cookieStorage.removeItem("wishlist");
       return;
     }
 
@@ -47,14 +48,14 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
       if (response.data.success) {
         const transformedWishlist = transformDbWishlistToStringArray(response.data.wishlist);
         setWishlist(transformedWishlist);
-        localStorage.setItem("wishlist", JSON.stringify(transformedWishlist));
+        cookieStorage.setObject("wishlist", transformedWishlist);
       }
     } catch (error) {
       console.error("Error fetching wishlist:", error);
-      // Fallback to localStorage if user is logged in but API fails
-      const stored = localStorage.getItem("wishlist");
+      // Fallback to cookies if user is logged in but API fails
+      const stored = cookieStorage.getObject<string[]>("wishlist");
       if (stored) {
-        setWishlist(JSON.parse(stored));
+        setWishlist(stored);
       }
     }
   };
@@ -64,19 +65,19 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
     if (user) {
       refreshWishlist();
     } else {
-      // If not logged in, load from localStorage
-      const stored = localStorage.getItem("wishlist");
+      // If not logged in, load from cookies
+      const stored = cookieStorage.getObject<string[]>("wishlist");
       if (stored) {
-        setWishlist(JSON.parse(stored));
+        setWishlist(stored);
       } else {
         setWishlist([]);
       }
     }
   }, [user]);
 
-  // Save wishlist to localStorage when it changes (for offline fallback)
+  // Save wishlist to cookies when it changes (for offline fallback)
   useEffect(() => {
-    localStorage.setItem("wishlist", JSON.stringify(wishlist));
+    cookieStorage.setObject("wishlist", wishlist);
   }, [wishlist]);
 
   // Toggle item in wishlist
@@ -106,7 +107,7 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     } else {
-      // Not logged in, update localStorage only
+      // Not logged in, update cookies only
       const exists = wishlist.includes(productId);
       if (exists) {
         setWishlist((prev) => prev.filter((id) => id !== productId));
@@ -138,7 +139,7 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
         setWishlist([]);
       }
     } else {
-      // Not logged in, clear localStorage only
+      // Not logged in, clear cookies only
       setWishlist([]);
     }
   };

@@ -4,6 +4,7 @@ import axios from "axios";
 import { FiPlus, FiMinus } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import { toastWithVoice } from "@/utils/toast";
+import { cookieStorage } from "../utils/cookies";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -22,7 +23,7 @@ const AdminProfile = () => {
   const [message, setMessage] = useState("");
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [voiceEnabled, setVoiceEnabled] = useState(() => {
-    const saved = localStorage.getItem("voice-enabled");
+    const saved = cookieStorage.getItem("voice-enabled");
     return saved === "false" ? false : true;
   });
 
@@ -43,7 +44,7 @@ const AdminProfile = () => {
   };
 
   useEffect(() => {
-    localStorage.setItem("voice-enabled", String(voiceEnabled));
+    cookieStorage.setItem("voice-enabled", String(voiceEnabled));
   }, [voiceEnabled]);
 
   const handleSwitchToUserView = () => navigate("/account");

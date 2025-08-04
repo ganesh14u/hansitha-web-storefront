@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { cookieStorage } from '../utils/cookies';
 
 interface CurrencyContextType {
   selectedCurrency: string;
@@ -12,7 +13,7 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedCurrency, setSelectedCurrency] = useState<string>(() => {
-    return localStorage.getItem('currency') || 'INR';
+    return cookieStorage.getItem('currency') || 'INR';
   });
 
   const [conversionRate, setConversionRate] = useState<number>(1);
@@ -29,8 +30,8 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       const cacheKey = `rate_INR_${selectedCurrency}`;
       const timestampKey = `rate_timestamp_INR_${selectedCurrency}`;
-      const cachedRate = localStorage.getItem(cacheKey);
-      const cachedTimestamp = localStorage.getItem(timestampKey);
+      const cachedRate = cookieStorage.getItem(cacheKey);
+      const cachedTimestamp = cookieStorage.getItem(timestampKey);
       const now = Date.now();
       const twelveHours = 12 * 60 * 60 * 1000;
 
@@ -48,8 +49,8 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (data?.rates?.[selectedCurrency]) {
           const rate = data.rates[selectedCurrency];
           setConversionRate(rate);
-          localStorage.setItem(cacheKey, rate.toString());
-          localStorage.setItem(timestampKey, now.toString());
+          cookieStorage.setItem(cacheKey, rate.toString());
+          cookieStorage.setItem(timestampKey, now.toString());
         } else {
           if (cachedRate) {
             setConversionRate(parseFloat(cachedRate));
@@ -65,7 +66,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     };
 
-    localStorage.setItem('currency', selectedCurrency);
+    cookieStorage.setItem('currency', selectedCurrency);
     fetchRate();
   }, [selectedCurrency]);
 
