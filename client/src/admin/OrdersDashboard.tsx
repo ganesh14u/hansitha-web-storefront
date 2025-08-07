@@ -2,10 +2,17 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader, Search } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  Loader,
+  Search
+} from 'lucide-react';
 
 interface CartItem {
-  id: string;
+  _id: string; // ✅ matches backend product id
   name: string;
   price: number;
   image: string;
@@ -30,10 +37,9 @@ const OrdersList = () => {
   const [toDate, setToDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [totalRevenue, setTotalRevenue] = useState(0);
-
   const [page, setPage] = useState(1);
-  const perPage = 5;
 
+  const perPage = 5;
   const API_URL = import.meta.env.VITE_API_URL;
 
   const fetchOrders = async () => {
@@ -41,11 +47,15 @@ const OrdersList = () => {
       const response = await axios.get(`${API_URL}/api/orders`, {
         withCredentials: true,
       });
-      const data = response.data;
+
+      const data: Order[] = response.data;
       setOrders(data);
       setFiltered(data);
 
-      const revenue = data.reduce((sum: number, order: Order) => sum + order.totalAmount, 0);
+      const revenue = data.reduce(
+        (sum, order) => sum + order.totalAmount,
+        0
+      );
       setTotalRevenue(revenue);
     } catch (error) {
       console.error('Failed to fetch orders', error);
@@ -58,31 +68,44 @@ const OrdersList = () => {
     let filteredData = [...orders];
 
     if (fromDate) {
-      filteredData = filteredData.filter(order => order.createdAt >= fromDate);
+      const from = new Date(fromDate).getTime();
+      filteredData = filteredData.filter(
+        order => new Date(order.createdAt).getTime() >= from
+      );
     }
 
     if (toDate) {
-      filteredData = filteredData.filter(order => order.createdAt <= toDate + 'T23:59:59');
+      const to = new Date(toDate + 'T23:59:59').getTime();
+      filteredData = filteredData.filter(
+        order => new Date(order.createdAt).getTime() <= to
+      );
     }
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filteredData = filteredData.filter(order =>
-        order._id.toLowerCase().includes(query) ||
-        order.email.toLowerCase().includes(query)
+      filteredData = filteredData.filter(
+        order =>
+          order._id.toLowerCase().includes(query) ||
+          order.email.toLowerCase().includes(query)
       );
     }
 
     setFiltered(filteredData);
-    setPage(1); // Reset to first page
+    setPage(1);
   };
 
   const totalPages = Math.ceil(filtered.length / perPage);
-  const paginatedOrders = filtered.slice((page - 1) * perPage, page * perPage);
+  const paginatedOrders = filtered.slice(
+    (page - 1) * perPage,
+    page * perPage
+  );
 
   const handleArrowNavigation = (e: KeyboardEvent) => {
-    if (e.key === 'ArrowRight' && page < totalPages) setPage(p => p + 1);
-    else if (e.key === 'ArrowLeft' && page > 1) setPage(p => p - 1);
+    if (e.key === 'ArrowRight' && page < totalPages) {
+      setPage(p => p + 1);
+    } else if (e.key === 'ArrowLeft' && page > 1) {
+      setPage(p => p - 1);
+    }
   };
 
   useEffect(() => {
@@ -109,17 +132,27 @@ const OrdersList = () => {
 
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-md p-4 sm:p-6">
-      <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4">🛒 Orders Overview</h2>
+      <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4">
+        🛒 Orders Overview
+      </h2>
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <div className="bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 p-3 sm:p-4 rounded-lg shadow">
-          <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Total Revenue</p>
-          <p className="text-lg sm:text-xl font-bold text-black">₹{totalRevenue.toLocaleString()}</p>
+          <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+            Total Revenue
+          </p>
+          <p className="text-lg sm:text-xl font-bold text-black">
+            ₹{totalRevenue.toLocaleString()}
+          </p>
         </div>
         <div className="bg-gradient-to-r from-pink-100 to-pink-200 dark:from-neutral-800 dark:to-neutral-700 p-3 sm:p-4 rounded-lg shadow">
-          <p className="text-xs sm:text-sm text-black-700 dark:text-black-300">Total Orders</p>
-          <p className="text-lg sm:text-xl font-bold text-black-800 dark:text-white">{filtered.length}</p>
+          <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+            Total Orders
+          </p>
+          <p className="text-lg sm:text-xl font-bold text-black dark:text-white">
+            {filtered.length}
+          </p>
         </div>
       </div>
 
@@ -128,13 +161,13 @@ const OrdersList = () => {
         <input
           type="date"
           value={fromDate}
-          onChange={(e) => setFromDate(e.target.value)}
+          onChange={e => setFromDate(e.target.value)}
           className="px-3 py-2 border rounded-md text-sm w-full dark:bg-neutral-800"
         />
         <input
           type="date"
           value={toDate}
-          onChange={(e) => setToDate(e.target.value)}
+          onChange={e => setToDate(e.target.value)}
           className="px-3 py-2 border rounded-md text-sm w-full dark:bg-neutral-800"
         />
         <div className="relative">
@@ -143,7 +176,7 @@ const OrdersList = () => {
             type="text"
             placeholder="Search by Order ID or Email"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             className="pl-9 pr-3 py-2 border rounded-md text-sm w-full dark:bg-neutral-800"
           />
         </div>
@@ -156,26 +189,35 @@ const OrdersList = () => {
           Loading orders...
         </div>
       ) : filtered.length === 0 ? (
-        <p className="text-gray-500 dark:text-black-400 text-center py-10">No orders found.</p>
+        <p className="text-gray-500 dark:text-gray-400 text-center py-10">
+          No orders found.
+        </p>
       ) : (
         <>
           <div className="space-y-4">
-            {paginatedOrders.map((order) => {
+            {paginatedOrders.map(order => {
               const isOpen = expanded[order._id] || false;
 
               return (
                 <div
                   key={order._id}
                   className="border rounded-xl p-4 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 hover:brightness-105 transition-all duration-200"
-                  onClick={() =>
-                    setExpanded((prev) => ({ ...prev, [order._id]: !prev[order._id] }))
-                  }
                 >
-                  <div className="flex justify-between items-center">
+                  <div
+                    className="flex justify-between items-center cursor-pointer"
+                    onClick={() =>
+                      setExpanded(prev => ({
+                        ...prev,
+                        [order._id]: !prev[order._id]
+                      }))
+                    }
+                  >
                     <div>
-                      <p className="text-xs text-black-500">Order ID</p>
-                      <p className="font-semibold text-primary truncate max-w-[240px]">{order._id}</p>
-                      <p className="text-xs text-black-600 dark:text-black-400">
+                      <p className="text-xs text-gray-600">Order ID</p>
+                      <p className="font-semibold text-primary truncate max-w-[240px]">
+                        {order._id}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
                         {new Date(order.createdAt).toLocaleString()}
                       </p>
                     </div>
@@ -186,12 +228,19 @@ const OrdersList = () => {
 
                   {isOpen && (
                     <div className="mt-4 space-y-3 text-sm">
-                      <p><strong>Email:</strong> {order.email}</p>
-                      <p><strong>Address:</strong> {order.address}</p>
+                      <p>
+                        <strong>Email:</strong> {order.email}
+                      </p>
+                      <p>
+                        <strong>Address:</strong> {order.address}
+                      </p>
 
                       <div className="grid gap-3 sm:grid-cols-2 mt-2">
-                        {order.cartItems.map((item) => (
-                          <div key={item.id} className="flex items-center gap-3 bg-white dark:bg-neutral-900 rounded-lg p-2 border">
+                        {order.cartItems.map(item => (
+                          <div
+                            key={item._id}
+                            className="flex items-center gap-3 bg-white dark:bg-neutral-900 rounded-lg p-2 border"
+                          >
                             <img
                               src={item.image}
                               alt={item.name}
