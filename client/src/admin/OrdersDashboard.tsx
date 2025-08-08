@@ -93,9 +93,11 @@ const OrdersList = () => {
     setPage(1);
   };
 
-    const handleNewOrder = (newOrder: Order) => {
-    setOrders((prev) => [newOrder, ...prev]);
+  const handleNewOrder = (newOrder: Order) => {
+    toast.success("🛒 New order received!");
+    fetchOrders(); // re-fetch orders from backend to get latest data
   };
+
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginatedOrders = filtered.slice((page - 1) * perPage, page * perPage);
 
@@ -113,10 +115,7 @@ const OrdersList = () => {
 
     const socket = io(API_URL, { withCredentials: true });
 
-    socket.on("newOrder", (newOrder: Order) => {
-      toast.success("🛒 New order received!");
-      setOrders((prev) => [newOrder, ...prev]); // Add order instantly
-    });
+    socket.on("newOrder", handleNewOrder);
 
     window.addEventListener("keydown", handleArrowNavigation);
 
