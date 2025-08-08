@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { useProducts } from "../context/ProductContext"; // ✅ added
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -14,6 +15,9 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 const Checkout: React.FC = () => {
   const { cartItems, getTotalPrice, clearCart } = useCart();
+  const { reloadProducts } = useProducts();
+  reloadProducts();
+
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -70,6 +74,8 @@ const Checkout: React.FC = () => {
 
       const paymentLink = res.data.paymentLink.short_url;
       clearCart();
+
+      // ✅ Backend should redirect to /success after payment
       window.location.href = paymentLink;
     } catch (err) {
       console.error("Error:", err);

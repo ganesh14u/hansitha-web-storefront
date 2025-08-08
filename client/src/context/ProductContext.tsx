@@ -6,7 +6,7 @@ import React, {
   ReactNode,
   Dispatch,
   SetStateAction,
-} from 'react';
+} from "react";
 
 // =======================
 // ✅ Interfaces
@@ -20,15 +20,15 @@ export interface Product {
   stock: number;
   featured?: boolean;
   description?: string;
-  extraImages?: string[];    // ✅ add this
-  published?: boolean; 
+  extraImages?: string[];
+  published?: boolean;
 }
 
 interface ProductContextType {
   products: Product[];
   setProducts: Dispatch<SetStateAction<Product[]>>;
   loading: boolean;
-  reloadProducts: () => void;
+  reloadProducts: () => Promise<void>;
 }
 
 interface ProductProviderProps {
@@ -38,15 +38,23 @@ interface ProductProviderProps {
 // =======================
 // ✅ Create Context
 // =======================
-export const ProductContext = createContext<ProductContextType>({
-  products: [],
-  setProducts: () => {},
-  loading: false,
-  reloadProducts: () => {},
-});
+export const ProductContext = createContext<ProductContextType | undefined>(
+  undefined
+);
 
-// Custom Hook
-export const useProductContext = () => useContext(ProductContext);
+// =======================
+// ✅ Custom Hook
+// =======================
+export const useProducts = () => {
+  const context = useContext(ProductContext);
+  if (!context) {
+    throw new Error("useProducts must be used within a ProductProvider");
+  }
+  return context;
+};
+
+// ✅ Backward-compatible export
+export const useProductContext = useProducts;
 
 // API Base URL
 const API_URL = import.meta.env.VITE_API_URL;
@@ -54,7 +62,9 @@ const API_URL = import.meta.env.VITE_API_URL;
 // =======================
 // ✅ Provider Component
 // =======================
-export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) => {
+export const ProductProvider: React.FC<ProductProviderProps> = ({
+  children,
+}) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,18 +73,19 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
     try {
       const res = await fetch(`${API_URL}/api/products`);
 
-      if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}: ${res.statusText}`);
+      }
 
-      const contentType = res.headers.get('Content-Type') || '';
-      if (!contentType.includes('application/json')) {
-        throw new Error('Invalid content type from server');
+      const contentType = res.headers.get("Content-Type") || "";
+      if (!contentType.includes("application/json")) {
+        throw new Error("Invalid content type from server");
       }
 
       const data = await res.json();
       setProducts(data);
     } catch (error) {
-      console.error('[Product Fetch Error]', error);
-      // Optionally: toast.error("Failed to load products")
+      console.error("[Product Fetch Error]", error);
     } finally {
       setLoading(false);
     }
@@ -85,7 +96,14 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
   }, []);
 
   return (
-    <ProductContext.Provider value={{ products, setProducts, loading, reloadProducts: fetchProducts }}>
+    <ProductContext.Provider
+      value={{
+        products,
+        setProducts,
+        loading,
+        reloadProducts: fetchProducts,
+      }}
+    >
       {children}
     </ProductContext.Provider>
   );

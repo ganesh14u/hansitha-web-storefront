@@ -56,19 +56,27 @@ const ProductDetailsPage = () => {
 
   useEffect(() => {
     const loadProduct = async () => {
-      if (location.state?.product) {
-        setProduct(location.state.product);
-        return;
-      }
-      if (!name) return;
-      setProduct(null);
       try {
+        // If product ID is available from location.state
+        if (location.state?.product?._id) {
+          const { _id } = location.state.product;
+          const res = await axios.get(`${API_URL}/api/products/${_id}`);
+          setProduct(res.data);
+          return;
+        }
+
+        // If no product ID, search by name
+        if (!name) return;
+        setProduct(null);
+
         const decodedName = decodeURIComponent(name);
         const res = await axios.get(
           `${API_URL}/api/products?name=${decodedName}`
         );
-        if (res.data.length > 0) setProduct(res.data[0]);
-        else {
+
+        if (res.data.length > 0) {
+          setProduct(res.data[0]);
+        } else {
           toastWithVoice.error("Product not found");
           navigate("/");
         }
@@ -77,8 +85,9 @@ const ProductDetailsPage = () => {
         navigate("/");
       }
     };
+
     loadProduct();
-  }, [name, location.state]);
+  }, [name, location.state?.product?._id, navigate]);
 
   useEffect(() => {
     if (product?.image) {
