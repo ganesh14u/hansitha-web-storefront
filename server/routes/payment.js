@@ -1,8 +1,8 @@
-// routes/checkout.js or routes/payment.js
+// routes/payment.js or routes/checkout.js
 const express = require("express");
 const router = express.Router();
 const Razorpay = require("razorpay");
-const Order = require("../models/Order"); // ✅ Ensure correct path
+const Order = require("../models/Order"); // Make sure path is correct
 
 require("dotenv").config();
 
@@ -15,7 +15,7 @@ router.post("/payment-link", async (req, res) => {
   const { amount, cartItems, customer } = req.body;
 
   try {
-    // ✅ Save order to MongoDB
+    // Save order to MongoDB with status "pending"
     const order = new Order({
       name: customer.name,
       email: customer.email,
@@ -25,12 +25,14 @@ router.post("/payment-link", async (req, res) => {
       status: "pending",
     });
 
-    await order.save(); // 🔥 This is what actually stores it
+    await order.save(); // Save to DB
 
-    // ✅ Create Razorpay Payment Link
+    // Create Razorpay Payment Link with reference_id set to order._id
     const paymentLink = await razorpay.paymentLink.create({
-      amount: amount * 100, // Razorpay accepts in paise
+      amount: Math.round(amount * 100), // amount in paise (integer)
       currency: "INR",
+      reference_id: order._id.toString(), // <-- This is your internal order ID
+      description: `Payment for Order ${order._id}`,
       customer: {
         name: customer.name,
         email: customer.email,
@@ -40,11 +42,11 @@ router.post("/payment-link", async (req, res) => {
         sms: true,
         email: true,
       },
-      callback_url: `${process.env.BASE_URL}/api/payment/verify`,
+      callback_url: `${process.env.BASE_URL}/order-confirmation`, // Frontend URL that handles confirmation
       callback_method: "get",
     });
 
-    res.json({ url: paymentLink.short_url });
+    res.json({ paymentLink }); // Send full paymentLink object or just paymentLink.short_url if you prefer
   } catch (err) {
     console.error("Payment link error:", err);
     res.status(500).json({ message: "Something went wrong" });

@@ -24,7 +24,11 @@ interface OrderDetails {
 
 const OrderConfirmation: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const orderId = searchParams.get("orderId");
+
+  // Try getting orderId from either orderId or razorpay_payment_link_reference_id
+  const orderId =
+    searchParams.get("orderId") || searchParams.get("razorpay_payment_link_reference_id");
+
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
