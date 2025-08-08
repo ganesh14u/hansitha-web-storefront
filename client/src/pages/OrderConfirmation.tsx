@@ -4,14 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Mail } from 'lucide-react';
 
-// Sample order data — replace this with actual cart/order context or props
-const orderedProducts = [
-  { name: 'Kurta', price: 1299, quantity: 2 },
-  { name: 'Jeans', price: 2099, quantity: 1 },
-  { name: 'T-Shirt', quantity: 1 }, // No price: will fallback to ₹0
-];
+interface OrderedProduct {
+  name: string;
+  price?: number;
+  quantity: number;
+}
 
-const OrderConfirmation = () => {
+interface OrderConfirmationProps {
+  orderedProducts: OrderedProduct[];
+}
+
+const OrderConfirmation: React.FC<OrderConfirmationProps> = ({ orderedProducts }) => {
   const calculateTotal = () => {
     return orderedProducts.reduce((total, item) => {
       if (typeof item.price === 'number') {
@@ -61,7 +64,7 @@ const OrderConfirmation = () => {
                   <span>
                     ₹
                     {typeof item.price === 'number'
-                      ? item.price.toLocaleString('en-IN')
+                      ? (item.price * item.quantity).toLocaleString('en-IN')
                       : '0'}
                   </span>
                 </li>
