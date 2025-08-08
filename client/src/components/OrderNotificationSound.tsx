@@ -11,29 +11,33 @@ const OrderNotificationSound: React.FC<Props> = ({ apiUrl, onNewOrder }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    audioRef.current = new Audio("/notification.mp3");
+    // Load sound file
+    audioRef.current = new Audio("/notification.mp3"); // put file in public/
 
-    // Unlock audio after first user interaction
-    const unlockAudio = () => {
-      if (audioRef.current) {
-        audioRef.current.play().catch(() => {});
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
-      document.removeEventListener("click", unlockAudio);
-    };
-    document.addEventListener("click", unlockAudio);
+    // Connect to Socket.IO
+    const socket = io(apiUrl, {
+      withCredentials: true,
+      transports: ["websocket"], // skip HTTP polling
+    });
 
-    const socket = io(apiUrl, { withCredentials: true });
+    socket.on("connect", () => {
+      console.log("✅ Socket connected:", socket.id);
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("❌ Socket connection error:", err.message);
+    });
 
     socket.on("newOrder", (newOrder) => {
       toast.success("🛒 New order received!");
+
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch((err) => {
           console.warn("Audio play failed:", err);
         });
       }
+
       if (onNewOrder) onNewOrder(newOrder);
     });
 
