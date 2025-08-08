@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import toast from "react-hot-toast";
+import OrderNotificationSound from "@/components/OrderNotificationSound";
 import {
   ChevronDown,
   ChevronUp,
@@ -92,6 +93,9 @@ const OrdersList = () => {
     setPage(1);
   };
 
+    const handleNewOrder = (newOrder: Order) => {
+    setOrders((prev) => [newOrder, ...prev]);
+  };
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginatedOrders = filtered.slice((page - 1) * perPage, page * perPage);
 
@@ -141,6 +145,8 @@ const OrdersList = () => {
 
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-md p-4 sm:p-6">
+      {/* 🔊 Order Notification Listener */}
+      <OrderNotificationSound apiUrl={API_URL} onNewOrder={handleNewOrder} />
       <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4">
         🛒 Orders Overview
       </h2>
