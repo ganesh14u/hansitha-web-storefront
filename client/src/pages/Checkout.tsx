@@ -64,6 +64,9 @@ const Checkout: React.FC = () => {
       const { email, firstName, lastName, phone } = formData;
       const totalAmount = total;
 
+      // Save a snapshot of cart items before clearing
+      const orderedItemsSnapshot = [...cartItems];
+
       const res = await axios.post(`${API_URL}/api/checkout/payment-link`, {
         userName: `${firstName} ${lastName}`,
         userEmail: email,
@@ -73,9 +76,14 @@ const Checkout: React.FC = () => {
       });
 
       const paymentLink = res.data.paymentLink.short_url;
-      clearCart();
 
-      // ✅ Backend should redirect to /success after payment
+      // Clear the cart after saving snapshot
+      await clearCart();
+
+      // Navigate to order confirmation page passing the snapshot in state
+      navigate("/order-confirmation", { state: { orderedItems: orderedItemsSnapshot } });
+
+      // Redirect user to payment URL
       window.location.href = paymentLink;
     } catch (err) {
       console.error("Error:", err);

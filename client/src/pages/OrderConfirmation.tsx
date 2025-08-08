@@ -1,18 +1,41 @@
 import React from "react";
-import { useLocation, Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Mail } from "lucide-react";
 
+interface OrderedProduct {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+}
+
+interface LocationState {
+  orderedItems?: OrderedProduct[];
+}
+
 const OrderConfirmation: React.FC = () => {
   const location = useLocation();
-  const orderedItems = location.state?.orderedItems || [];
+  const navigate = useNavigate();
 
-  const getTotalPrice = () =>
-    orderedItems.reduce(
-      (total, item) => total + item.price * item.quantity,
-      0
-    );
+  // Extract orderedItems from navigation state
+  const state = location.state as LocationState | undefined;
+  const orderedItems = state?.orderedItems || [];
+
+  // If no ordered items in state, redirect user back to shop
+  React.useEffect(() => {
+    if (!orderedItems.length) {
+      navigate("/shop", { replace: true });
+    }
+  }, [orderedItems, navigate]);
+
+  // Calculate total price from orderedItems
+  const totalPrice = orderedItems.reduce(
+    (total, item) => total + item.price * item.quantity,
+    0
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-400 to-pink-400 py-16">
@@ -47,25 +70,22 @@ const OrderConfirmation: React.FC = () => {
           <div className="bg-white shadow rounded-lg p-6 mb-8 text-left">
             <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
             {orderedItems.length === 0 ? (
-              <p className="text-gray-500 text-center">Your order is empty.</p>
+              <p className="text-gray-500 text-center">No order details found.</p>
             ) : (
               <ul className="divide-y">
-                {orderedItems.map((item, index) => (
-                  <li
-                    key={index}
-                    className="flex justify-between py-2 text-sm"
-                  >
+                {orderedItems.map((item) => (
+                  <li key={item.id} className="flex justify-between py-2 text-sm">
                     <span>
                       {item.name} × {item.quantity}
                     </span>
-                    <span>₹{item.price.toLocaleString("en-IN")}</span>
+                    <span>₹{(item.price * item.quantity).toLocaleString("en-IN")}</span>
                   </li>
                 ))}
               </ul>
             )}
             <div className="flex justify-between font-bold pt-4 border-t mt-4">
               <span>Total</span>
-              <span>₹{getTotalPrice().toLocaleString("en-IN")}</span>
+              <span>₹{totalPrice.toLocaleString("en-IN")}</span>
             </div>
           </div>
 
