@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-import { useProducts } from "../context/ProductContext"; // ✅ added
+import { useProducts } from "../context/ProductContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -80,10 +80,12 @@ const Checkout: React.FC = () => {
       // Clear the cart after saving snapshot
       await clearCart();
 
-      // Navigate to order confirmation page passing the snapshot in state
-      navigate("/order-confirmation", { state: { orderedItems: orderedItemsSnapshot } });
-
-      // Redirect user to payment URL
+      // IMPORTANT:
+      // Do NOT navigate to order confirmation here because payment is not done yet.
+      // The payment gateway should redirect back to
+      // /order-confirmation?orderId=ORDER_ID after payment completes.
+      //
+      // So just redirect user to payment page:
       window.location.href = paymentLink;
     } catch (err) {
       console.error("Error:", err);
