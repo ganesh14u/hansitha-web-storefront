@@ -1,8 +1,11 @@
-import React from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Mail } from "lucide-react";
+import axios from "axios";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface OrderedProduct {
   id: string;
@@ -12,27 +15,61 @@ interface OrderedProduct {
   image?: string;
 }
 
-interface LocationState {
-  orderedItems?: OrderedProduct[];
+interface OrderDetails {
+  orderId: string;
+  products: OrderedProduct[];
+  totalAmount: number;
+  customerEmail: string;
 }
 
 const OrderConfirmation: React.FC = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const orderId = searchParams.get("orderId");
+  const [order, setOrder] = useState<OrderDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Extract orderedItems from navigation state
-  const state = location.state as LocationState | undefined;
-  const orderedItems = state?.orderedItems || [];
-
-  // If no ordered items in state, redirect user back to shop
-  React.useEffect(() => {
-    if (!orderedItems.length) {
-      navigate("/shop", { replace: true });
+  useEffect(() => {
+    if (!orderId) {
+      setError("No order ID found in URL.");
+      setLoading(false);
+      return;
     }
-  }, [orderedItems, navigate]);
 
-  // Calculate total price from orderedItems
-  const totalPrice = orderedItems.reduce(
+    const fetchOrder = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/orders/${orderId}`);
+        setOrder(res.data.order);
+      } catch (err) {
+        setError("Failed to load order details.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrder();
+  }, [orderId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading order details...</p>
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <p className="text-red-500">{error || "Order not found."}</p>
+        <Button asChild>
+          <Link to="/shop">Go to Shop</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const totalPrice = order.products.reduce(
     (total, item) => total + item.price * item.quantity,
     0
   );
@@ -47,8 +84,8 @@ const OrderConfirmation: React.FC = () => {
               Order Confirmed!
             </h1>
             <p className="text-gray-600">
-              Thank you for your purchase. Your order has been received and is
-              being processed.
+              Thank you for your purchase. A confirmation email has been sent to{" "}
+              {order.customerEmail}.
             </p>
           </div>
 
@@ -59,37 +96,37 @@ const OrderConfirmation: React.FC = () => {
                 <div className="text-left">
                   <h3 className="font-semibold">Confirmation Email</h3>
                   <p className="text-sm text-gray-600">
-                    A confirmation email has been sent to your email address.
+                    You will receive order details in your email shortly.
                   </p>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* 🛍️ Order Summary */}
           <div className="bg-white shadow rounded-lg p-6 mb-8 text-left">
             <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
-            {orderedItems.length === 0 ? (
-              <p className="text-gray-500 text-center">No order details found.</p>
-            ) : (
-              <ul className="divide-y">
-                {orderedItems.map((item) => (
-                  <li key={item.id} className="flex justify-between py-2 text-sm">
-                    <span>
-                      {item.name} × {item.quantity}
-                    </span>
-                    <span>₹{(item.price * item.quantity).toLocaleString("en-IN")}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ul className="divide-y">
+              {order.products.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex justify-between py-2 text-sm"
+                >
+                  <span>
+                    {item.name} × {item.quantity}
+                  </span>
+                  <span>
+                    ₹
+                    {(item.price * item.quantity).toLocaleString("en-IN")}
+                  </span>
+                </li>
+              ))}
+            </ul>
             <div className="flex justify-between font-bold pt-4 border-t mt-4">
               <span>Total</span>
               <span>₹{totalPrice.toLocaleString("en-IN")}</span>
             </div>
           </div>
 
-          {/* Navigation */}
           <div className="space-y-4">
             <Button asChild size="lg">
               <Link to="/shop">Continue Shopping</Link>
