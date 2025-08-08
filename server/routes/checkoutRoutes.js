@@ -32,7 +32,7 @@ router.post("/payment-link", async (req, res) => {
       notes: {
         email: userEmail,
       },
-      callback_url: `${process.env.FRONTEND_URL}/order-confirmation`,
+      callback_url: `${process.env.FRONTEND_URL}/order-confirmation?email=${encodeURIComponent(userEmail)}`,
       callback_method: "get",
     });
 

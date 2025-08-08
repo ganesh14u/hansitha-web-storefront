@@ -58,4 +58,49 @@ const placeOrder = async (req, res) => {
   }
 };
 
-module.exports = { placeOrder };
+const getOrderById = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ success: false, error: "Invalid order ID" });
+    }
+
+    const order = await Order.findById(orderId);
+    
+    if (!order) {
+      return res.status(404).json({ success: false, error: "Order not found" });
+    }
+
+    res.status(200).json({ success: true, order });
+  } catch (error) {
+    console.error("❌ Failed to fetch order:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch order" });
+  }
+};
+
+const getCurrentOrderId = async (req, res) => {
+  try {
+    // Get the most recent order for the user based on email
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ success: false, error: "Email is required" });
+    }
+
+    const order = await Order.findOne({ email })
+      .sort({ createdAt: -1 })
+      .select('_id');
+
+    if (!order) {
+      return res.status(404).json({ success: false, error: "No order found" });
+    }
+
+    res.status(200).json({ success: true, orderId: order._id });
+  } catch (error) {
+    console.error("❌ Failed to fetch current order:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch current order" });
+  }
+};
+
+module.exports = { placeOrder, getOrderById, getCurrentOrderId };
