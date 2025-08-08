@@ -17,20 +17,19 @@ const server = http.createServer(app);
 
 // ✅ Allowed Origins Setup
 const allowedOrigins = [
-  "http://localhost:8080", // ✅ local dev
+  "http://localhost:8080",
   "https://hansithacreations.com",
   "https://hansithacreations.netlify.app",
   "https://hansitha-web-storefront.onrender.com",
   "https://hansithacreations.liveblog365.com",
 ];
 
-// ✅ Socket.IO Config
+// ✅ Socket.IO CORS Config
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
     credentials: true,
   },
-  transports: ["websocket"], // ✅ Force WebSockets only
 });
 global.io = io;
 
@@ -59,6 +58,8 @@ cloudinary.config({
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+// No Razorpay configuration needed
+
 // Database Connection
 mongoose
   .connect(process.env.MONGO_URI, {
@@ -75,17 +76,8 @@ mongoose
 
 // WebSocket Connection
 io.on("connection", (socket) => {
-  console.log("🔌 Client connected:", socket.id);
-
-  socket.on("disconnect", () => {
-    console.log("❌ Client disconnected:", socket.id);
-  });
+  console.log("🔌 Admin connected:", socket.id);
 });
-
-// ✅ Keep-alive ping to prevent Render from closing WebSockets
-setInterval(() => {
-  io.emit("ping", { time: Date.now() });
-}, 25000);
 
 // Routes
 const authRoutes = require("./routes/auth.js");
@@ -98,7 +90,7 @@ const otpRoutes = require("./routes/otpRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const paymentRoutes = require("./routes/payment");
 
-// ✅ Announcement route
+// ✅ Announcement route with auto-refresh
 const Announcement = require("./models/Announcement");
 const announcementRoutes = require("express").Router();
 
@@ -128,7 +120,7 @@ announcementRoutes.post("/", async (req, res) => {
   }
 });
 
-// Health check
+// Health check route for Render
 app.get("/", (req, res) => res.status(200).send("Backend is live"));
 
 // Route Setup
@@ -144,7 +136,7 @@ app.use("/auth", otpRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/announcements", announcementRoutes);
 
-// ✅ Carousel Schema & Uploads
+// Carousel Schema & Uploads
 const ImageSchema = new mongoose.Schema({
   carouselId: { type: String, required: true, unique: true },
   imageUrl: { type: String, default: "" },
@@ -244,19 +236,8 @@ app.post("/api/newsletter", async (req, res) => {
   }
 });
 
-// ✅ Test route to trigger newOrder sound without placing an order
-app.get("/test-order", (req, res) => {
-  const fakeOrder = {
-    id: Date.now(),
-    items: ["Test Product"],
-    total: 123.45,
-  };
-  global.io.emit("newOrder", fakeOrder);
-  res.json({ success: true, message: "Test order emitted", order: fakeOrder });
-});
-
 // Start Server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT;
 server.listen(PORT, "0.0.0.0", () =>
   console.log(`🚀 Server running on port ${PORT}`)
 );
