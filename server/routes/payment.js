@@ -1,9 +1,7 @@
-// routes/payment.js or routes/checkout.js
 const express = require("express");
 const router = express.Router();
 const Razorpay = require("razorpay");
-const Order = require("../models/Order"); // Make sure path is correct
-
+const Order = require("../models/Order");
 require("dotenv").config();
 
 const razorpay = new Razorpay({
@@ -11,27 +9,28 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+// POST /api/payment/payment-link - Create order & Razorpay payment link
 router.post("/payment-link", async (req, res) => {
   const { amount, cartItems, customer } = req.body;
 
   try {
-    // Save order to MongoDB with status "pending"
+    // Save order with status "pending"
     const order = new Order({
       name: customer.name,
       email: customer.email,
       phone: customer.phone,
       amount,
-      cartItems,
+      products: cartItems,
       status: "pending",
     });
 
-    await order.save(); // Save to DB
+    await order.save();
 
-    // Create Razorpay Payment Link with reference_id set to order._id
+    // Create Razorpay payment link with reference_id = order._id
     const paymentLink = await razorpay.paymentLink.create({
-      amount: Math.round(amount * 100), // amount in paise (integer)
+      amount: Math.round(amount * 100), // paise
       currency: "INR",
-      reference_id: order._id.toString(), // <-- This is your internal order ID
+      reference_id: order._id.toString(),
       description: `Payment for Order ${order._id}`,
       customer: {
         name: customer.name,
@@ -42,11 +41,11 @@ router.post("/payment-link", async (req, res) => {
         sms: true,
         email: true,
       },
-      callback_url: `${process.env.BASE_URL}/order-confirmation`, // Frontend URL that handles confirmation
+      callback_url: `${process.env.BASE_URL}/order-confirmation`,
       callback_method: "get",
     });
 
-    res.json({ paymentLink }); // Send full paymentLink object or just paymentLink.short_url if you prefer
+    res.json({ paymentLink }); // send full paymentLink object
   } catch (err) {
     console.error("Payment link error:", err);
     res.status(500).json({ message: "Something went wrong" });

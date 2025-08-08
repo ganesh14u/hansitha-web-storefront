@@ -1,10 +1,25 @@
 const mongoose = require("mongoose");
 
 const orderSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  phone: String,
-  amount: Number,
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  email: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  phone: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  amount: {
+    type: Number,
+    required: true,
+  },
   status: {
     type: String,
     enum: ["pending", "paid", "failed"],
@@ -12,11 +27,11 @@ const orderSchema = new mongoose.Schema({
   },
   products: [
     {
-      id: String,
-      name: String,
+      id: { type: String, required: true },
+      name: { type: String, required: true },
       image: String,
-      price: Number,
-      quantity: Number,
+      price: { type: Number, required: true },
+      quantity: { type: Number, required: true },
     },
   ],
   createdAt: {
