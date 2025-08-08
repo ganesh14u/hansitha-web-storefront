@@ -110,20 +110,40 @@ const OrdersList = () => {
   };
 
   // ✅ Initial fetch + Socket.IO setup
-  useEffect(() => {
-    fetchOrders();
+useEffect(() => {
+  const fetchOrders = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/orders`, {
+        withCredentials: true,
+      });
+      const data: Order[] = response.data;
+      setOrders(data);
+      setFiltered(data);
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to fetch orders", error);
+      setLoading(false);
+    }
+  };
 
-    const socket = io(API_URL, { withCredentials: true });
+  fetchOrders();
 
-    socket.on("newOrder", handleNewOrder);
+  const handleNewOrder = (newOrder: Order) => {
+    toast.success("🛒 New order received!");
+    fetchOrders(); // re-fetch all orders on new order
+  };
 
-    window.addEventListener("keydown", handleArrowNavigation);
+  const socket = io(API_URL, { withCredentials: true });
+  socket.on("newOrder", handleNewOrder);
 
-    return () => {
-      socket.disconnect();
-      window.removeEventListener("keydown", handleArrowNavigation);
-    };
-  }, []);
+  window.addEventListener("keydown", handleArrowNavigation);
+
+  return () => {
+    socket.disconnect();
+    window.removeEventListener("keydown", handleArrowNavigation);
+  };
+}, []);
+
 
   // ✅ Re-run filters when criteria or orders change
   useEffect(() => {
