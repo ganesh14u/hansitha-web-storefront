@@ -59,20 +59,21 @@ const OrdersList = () => {
       setLoading(false);
     }
   };
-
-  // ✅ Filter orders whenever inputs change
+  // ✅ Filter orders based on criteria
   const filterOrders = () => {
     let filteredData = [...orders];
 
     if (fromDate) {
-      const from = new Date(fromDate).getTime();
+      const [year, month, day] = fromDate.split("-").map(Number);
+      const from = new Date(year, month - 1, day).getTime();
       filteredData = filteredData.filter(
         (order) => new Date(order.createdAt).getTime() >= from
       );
     }
 
     if (toDate) {
-      const to = new Date(toDate + "T23:59:59").getTime();
+      const [year, month, day] = toDate.split("-").map(Number);
+      const to = new Date(year, month - 1, day, 23, 59, 59, 999).getTime();
       filteredData = filteredData.filter(
         (order) => new Date(order.createdAt).getTime() <= to
       );
@@ -127,16 +128,16 @@ const OrdersList = () => {
   }, [fromDate, toDate, searchQuery, orders]);
 
   useEffect(() => {
-  const revenue = filtered.reduce((sum, order) => {
-    const orderTotal = order.products.reduce(
-      (total, item) => total + item.quantity * item.price,
-      0
-    );
-    return sum + orderTotal;
-  }, 0);
-  setTotalRevenue(revenue);
-}, [filtered]);
-
+    const revenue = filtered.reduce((sum, order) => {
+      const orderTotal = order.products.reduce((total, item) => {
+        const price = Number(item.price) || 0;
+        const quantity = Number(item.quantity) || 0;
+        return total + quantity * price;
+      }, 0);
+      return sum + orderTotal;
+    }, 0);
+    setTotalRevenue(revenue);
+  }, [filtered]);
 
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-md p-4 sm:p-6">
@@ -172,6 +173,7 @@ const OrdersList = () => {
           onChange={(e) => setFromDate(e.target.value)}
           className="px-3 py-2 border rounded-md text-sm w-full dark:bg-neutral-800"
         />
+
         <input
           type="date"
           value={toDate}
