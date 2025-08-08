@@ -17,7 +17,7 @@ const server = http.createServer(app);
 
 // ✅ Allowed Origins Setup
 const allowedOrigins = [
-  "http://localhost:5173", // ✅ local dev
+  "http://localhost:8080", // ✅ local dev
   "https://hansithacreations.com",
   "https://hansithacreations.netlify.app",
   "https://hansitha-web-storefront.onrender.com",
