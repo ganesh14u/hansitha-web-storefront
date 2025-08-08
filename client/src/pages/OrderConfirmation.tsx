@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Mail } from 'lucide-react';
@@ -10,11 +10,11 @@ interface OrderedProduct {
   quantity: number;
 }
 
-interface OrderConfirmationProps {
-  orderedProducts: OrderedProduct[];
-}
+const OrderConfirmation: React.FC = () => {
+  const location = useLocation();
+  // Get orderedProducts from router state, fallback to empty array
+  const orderedProducts: OrderedProduct[] = (location.state?.orderedProducts as OrderedProduct[]) || [];
 
-const OrderConfirmation: React.FC<OrderConfirmationProps> = ({ orderedProducts }) => {
   const calculateTotal = () => {
     return orderedProducts.reduce((total, item) => {
       if (typeof item.price === 'number') {
@@ -30,9 +30,7 @@ const OrderConfirmation: React.FC<OrderConfirmationProps> = ({ orderedProducts }
         <div className="max-w-2xl mx-auto text-center">
           <div className="mb-8">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Order Confirmed!
-            </h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Confirmed!</h1>
             <p className="text-gray-600">
               Thank you for your purchase. Your order has been received and is being processed.
             </p>
@@ -56,24 +54,30 @@ const OrderConfirmation: React.FC<OrderConfirmationProps> = ({ orderedProducts }
           <div className="bg-white shadow rounded-lg p-6 mb-8 text-left">
             <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
             <ul className="divide-y">
-              {orderedProducts.map((item, index) => (
-                <li key={index} className="flex justify-between py-2 text-sm">
-                  <span>
-                    {item.name} × {item.quantity}
-                  </span>
-                  <span>
-                    ₹
-                    {typeof item.price === 'number'
-                      ? (item.price * item.quantity).toLocaleString('en-IN')
-                      : '0'}
-                  </span>
-                </li>
-              ))}
+              {orderedProducts.length === 0 ? (
+                <li className="text-center py-4 text-gray-500">No products found.</li>
+              ) : (
+                orderedProducts.map((item, index) => (
+                  <li key={index} className="flex justify-between py-2 text-sm">
+                    <span>
+                      {item.name} × {item.quantity}
+                    </span>
+                    <span>
+                      ₹
+                      {typeof item.price === 'number'
+                        ? (item.price * item.quantity).toLocaleString('en-IN')
+                        : '0'}
+                    </span>
+                  </li>
+                ))
+              )}
             </ul>
-            <div className="flex justify-between font-bold pt-4 border-t mt-4">
-              <span>Total</span>
-              <span>₹{calculateTotal().toLocaleString('en-IN')}</span>
-            </div>
+            {orderedProducts.length > 0 && (
+              <div className="flex justify-between font-bold pt-4 border-t mt-4">
+                <span>Total</span>
+                <span>₹{calculateTotal().toLocaleString('en-IN')}</span>
+              </div>
+            )}
           </div>
 
           {/* Navigation */}
