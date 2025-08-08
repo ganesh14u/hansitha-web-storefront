@@ -1,90 +1,28 @@
-import React, { useEffect, useState } from "react";
-import { useSearchParams, Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Mail } from "lucide-react";
-@@ -23,52 +23,67 @@ interface OrderDetails {
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { CheckCircle, Mail } from 'lucide-react';
+
+interface OrderedProduct {
+  name: string;
+  price?: number;
+  quantity: number;
 }
 
 const OrderConfirmation: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  // Get orderedProducts from router state, fallback to empty array
+  const orderedProducts: OrderedProduct[] = (location.state?.orderedProducts as OrderedProduct[]) || [];
 
-  // Try getting orderId from either orderId or razorpay_payment_link_reference_id
-  const orderId =
-    searchParams.get("orderId") || searchParams.get("razorpay_payment_link_reference_id");
-
-  const [order, setOrder] = useState<OrderDetails | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!orderId) {
-      setError("No order ID found in URL.");
-      setLoading(false);
-      return;
-    }
-
-    const fetchOrder = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/api/orders/${orderId}`);
-        setOrder(res.data.order);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      } catch (err) {
-
-        setError("Failed to load order details.");
-      } finally {
-        setLoading(false);
+  const calculateTotal = () => {
+    return orderedProducts.reduce((total, item) => {
+      if (typeof item.price === 'number') {
+        return total + item.price * item.quantity;
       }
-    };
-
-    fetchOrder();
-  }, [orderId]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading order details...</p>
-      </div>
-    );
-  }
-
-  if (error || !order) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <p className="text-red-500">{error || "Order not found."}</p>
-        <Button asChild>
-          <Link to="/shop">Go to Shop</Link>
-        </Button>
-
-
-
-      </div>
-    );
-  }
-@@ -79,67 +94,68 @@ const OrderConfirmation: React.FC = () => {
-  );
+      return total;
+    }, 0);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-400 to-pink-400 py-16">
@@ -92,12 +30,9 @@ const OrderConfirmation: React.FC = () => {
         <div className="max-w-2xl mx-auto text-center">
           <div className="mb-8">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Order Confirmed!
-            </h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Confirmed!</h1>
             <p className="text-gray-600">
-              Thank you for your purchase. A confirmation email has been sent to{" "}
-              {order.customerEmail}.
+              Thank you for your purchase. Your order has been received and is being processed.
             </p>
           </div>
 
@@ -108,70 +43,44 @@ const OrderConfirmation: React.FC = () => {
                 <div className="text-left">
                   <h3 className="font-semibold">Confirmation Email</h3>
                   <p className="text-sm text-gray-600">
-                    You will receive order details in your email shortly.
+                    A confirmation email has been sent to your email address.
                   </p>
                 </div>
               </CardContent>
             </Card>
           </div>
 
+          {/* 🛍️ Order Summary */}
           <div className="bg-white shadow rounded-lg p-6 mb-8 text-left">
             <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
             <ul className="divide-y">
-              {order.products.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex justify-between py-2 text-sm"
-                >
-                  <span>
-                    {item.name} × {item.quantity}
-                  </span>
-                  <span>
-                    ₹
-                    {(item.price * item.quantity).toLocaleString("en-IN")}
-                  </span>
-                </li>
-              ))}
+              {orderedProducts.length === 0 ? (
+                <li className="text-center py-4 text-gray-500">No products found.</li>
+              ) : (
+                orderedProducts.map((item, index) => (
+                  <li key={index} className="flex justify-between py-2 text-sm">
+                    <span>
+                      {item.name} × {item.quantity}
+                    </span>
+                    <span>
+                      ₹
+                      {typeof item.price === 'number'
+                        ? (item.price * item.quantity).toLocaleString('en-IN')
+                        : '0'}
+                    </span>
+                  </li>
+                ))
+              )}
             </ul>
-            <div className="flex justify-between font-bold pt-4 border-t mt-4">
-              <span>Total</span>
-              <span>₹{totalPrice.toLocaleString("en-IN")}</span>
-            </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            {orderedProducts.length > 0 && (
+              <div className="flex justify-between font-bold pt-4 border-t mt-4">
+                <span>Total</span>
+                <span>₹{calculateTotal().toLocaleString('en-IN')}</span>
+              </div>
+            )}
           </div>
 
-
+          {/* Navigation */}
           <div className="space-y-4">
             <Button asChild size="lg">
               <Link to="/shop">Continue Shopping</Link>
@@ -184,3 +93,7 @@ const OrderConfirmation: React.FC = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+export default OrderConfirmation;
