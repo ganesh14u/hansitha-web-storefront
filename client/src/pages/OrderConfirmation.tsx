@@ -1,12 +1,18 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Mail } from "lucide-react";
-import { useCart } from "@/context/CartContext"; // <-- useCart hook from your context
 
 const OrderConfirmation: React.FC = () => {
-  const { cartItems, getTotalPrice } = useCart();
+  const location = useLocation();
+  const orderedItems = location.state?.orderedItems || [];
+
+  const getTotalPrice = () =>
+    orderedItems.reduce(
+      (total, item) => total + item.price * item.quantity,
+      0
+    );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-400 to-pink-400 py-16">
@@ -40,11 +46,11 @@ const OrderConfirmation: React.FC = () => {
           {/* 🛍️ Order Summary */}
           <div className="bg-white shadow rounded-lg p-6 mb-8 text-left">
             <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
-            {cartItems.length === 0 ? (
-              <p className="text-gray-500 text-center">Your cart is empty.</p>
+            {orderedItems.length === 0 ? (
+              <p className="text-gray-500 text-center">Your order is empty.</p>
             ) : (
               <ul className="divide-y">
-                {cartItems.map((item, index) => (
+                {orderedItems.map((item, index) => (
                   <li
                     key={index}
                     className="flex justify-between py-2 text-sm"
