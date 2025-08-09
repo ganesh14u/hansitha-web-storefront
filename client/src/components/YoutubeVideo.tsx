@@ -121,7 +121,7 @@ const LoopingYouTubeVideo: React.FC = () => {
             border: "none",
             cursor: "pointer",
             borderRadius: "50%",
-            zIndex: 10,
+            zIndex: 0,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
