@@ -71,6 +71,7 @@ const LoopingYouTubeVideo: React.FC = () => {
     if (playerRef.current) {
       if (isMuted) {
         playerRef.current.unMute();
+        playerRef.current.playVideo(); // ✅ force play so audio starts on mobile
         setIsMuted(false);
       } else {
         playerRef.current.mute();
