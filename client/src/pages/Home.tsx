@@ -10,6 +10,7 @@ import FeaturedProducts from '@/pages/FeaturedProducts';
 import CategoryCircle from '@/components/CategoryCircle';
 import SearchSidebar from '@/components/SearchSidebar';
 import AnnouncementBar from "@/components/AnnouncementBar";
+import YoutubeVideo from '@/components/YoutubeVideo';
 import {
   disableBodyScroll,
   enableBodyScroll,
@@ -151,7 +152,7 @@ const Home = () => {
           <CategoryCircle />
         </div>
       </div>
-
+      <YoutubeVideo />
       <FeaturedProducts />
       <PromoSection />
       <Footer />

@@ -225,7 +225,7 @@ const Shop: React.FC = () => {
                               added ? "Added to wishlist" : "Removed from wishlist"
                             );
                           }}
-                          className="absolute top-2 right-2 z-0 rounded-full p-1 text-white bg-black/50 hover:bg-black/70 transition"
+                          className="absolute bottom-60 right-2 rounded-full p-1 text-white transition"
                         >
                           {isWishlisted ? (
                             <Heart className="w-5 h-5 text-red-500 fill-red-500" />
