@@ -69,6 +69,38 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// ✅ Register
+router.post("/register", async (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  try {
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    // Create new user (password will be hashed by pre-save middleware)
+    const newUser = new User({ name, email, password });
+    await newUser.save();
+
+    res.status(201).json({
+      message: "User registered successfully",
+      userId: newUser._id,
+      email: newUser.email,
+      name: newUser.name,
+    });
+  } catch (err) {
+    console.error("Registration error:", err);
+    res.status(500).json({ message: "Server error during registration" });
+  }
+});
+
+
 // ✅ Get current user
 router.get("/me", auth, async (req, res) => {
   try {
