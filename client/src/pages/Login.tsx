@@ -1,6 +1,7 @@
 // ✅ Updated Login.tsx - now fixes the login flow, handles errors, and integrates correctly with AuthContext
 
 import React, { useState } from "react";
+import { useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -76,6 +77,14 @@ const Login = () => {
     visible: { opacity: 1, x: 0 },
     exit: { opacity: 0, x: -50 },
   };
+  
+  useEffect(() => {
+  const successFlag = localStorage.getItem('registrationSuccess');
+  if (successFlag) {
+    toast.success('Registration successful! Please log in.');
+    localStorage.removeItem('registrationSuccess'); // clear so it doesn't repeat
+  }
+}, []);
 
   return (
     <div className="max-w-md mx-auto mt-20 p-8 border rounded-lg shadow-lg bg-white relative overflow-hidden">

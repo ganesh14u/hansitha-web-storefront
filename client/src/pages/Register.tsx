@@ -34,6 +34,7 @@ const Register = () => {
         email: formData.email,
         password: formData.password,
       });
+      localStorage.setItem('registrationSuccess', 'true');
       navigate('/login');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed');
