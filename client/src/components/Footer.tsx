@@ -48,9 +48,9 @@ export const Footer = () => {
   };
 
   return (
-    <footer className="bg-gray-900 text-white pt-8 pb-8">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+    <footer className="bg-gray-900 text-white pt-8">
+      <div className="container mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-4">
           {/* Company Info */}
           <div className="flex flex-col items-center text-center md:items-start md:text-left">
             <div className="mb-4">
@@ -256,10 +256,7 @@ export const Footer = () => {
 
         {/* Bottom bar */}
         <div
-          className="border-t border-gray-800 pt-8 md:pb-0 flex flex-col md:flex-row justify-between items-center"
-          style={{
-            paddingBottom: "var(--bottom-nav-height, 5rem)", // fallback if JS doesn't run
-          }}
+          className="border-t border-gray-800 pt-4 pb-20 md:pb-6 flex flex-col md:flex-row justify-between items-center"
         >
           <p className="text-gray-400 text-sm">
             © 2025 Hansitha Creations. All rights reserved.
