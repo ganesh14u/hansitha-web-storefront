@@ -1,10 +1,10 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Link } from "react-router-dom";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { toastWithVoice } from "@/utils/toast";
-import { useContext } from "react";
-import { ProductContext } from "../context/ProductContext"; // adjust path if needed
+import { ProductContext } from "../context/ProductContext";
+import { calculatePricing } from "@/utils/pricing"; // ✅ New import
 
 // Format INR price
 const formatPrice = (value?: number) =>
@@ -48,6 +48,9 @@ const Cart = () => {
     );
   }
 
+  const subtotal = getTotalPrice();
+  const { shipping, tax, total } = calculatePricing(subtotal);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-400 to-pink-400 py-10 px-4">
       <div className="container mx-auto max-w-7xl">
@@ -82,19 +85,20 @@ const Cart = () => {
                     >
                       <div className="flex items-center gap-4 sm:gap-6 w-full sm:w-auto">
                         {/* Product Image */}
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-[80px] h-[120px] object-cover rounded-lg self-center"
-                      />
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-[80px] h-[120px] object-cover rounded-lg self-center"
+                        />
 
-                      {/* Product Name */}
-                      <div className="flex w-full text-center sm:text-center">
-                        <h3 className="text-base font-medium text-gray-800">
-                          {item.name}
-                        </h3>
+                        {/* Product Name */}
+                        <div className="flex w-full text-center sm:text-center">
+                          <h3 className="text-base font-medium text-gray-800">
+                            {item.name}
+                          </h3>
+                        </div>
                       </div>
-                      </div>
+
                       {/* Quantity + Price + Trash */}
                       <div className="flex w-full justify-between sm:justify-end sm:items-center gap-2 mt-2 sm:mt-0">
                         {/* Quantity Controls */}
@@ -141,12 +145,13 @@ const Cart = () => {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
+
                       {/* Out of Stock Notice */}
-                        {isMax && (
-                          <p className="text-xs text-red-500 font-medium">
-                            Max Stock Added
-                          </p>
-                        )}
+                      {isMax && (
+                        <p className="text-xs text-red-500 font-medium">
+                          Max Stock Added
+                        </p>
+                      )}
                     </div>
                   );
                 })}
@@ -163,26 +168,20 @@ const Cart = () => {
               <div className="space-y-4 text-sm mb-6">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span className="font-medium">
-                    {formatPrice(getTotalPrice())}
-                  </span>
+                  <span className="font-medium">{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
-                  <span className="font-medium">Free</span>
+                  <span className="font-medium">{formatPrice(shipping)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Tax (10%)</span>
-                  <span className="font-medium">
-                    {formatPrice(getTotalPrice() * 0.1)}
-                  </span>
+                  <span>Tax (5%)</span>
+                  <span className="font-medium">{formatPrice(tax)}</span>
                 </div>
                 <div className="border-t pt-4 font-semibold text-lg">
                   <div className="flex justify-between">
                     <span>Total</span>
-                    <span className="text-blue-600">
-                      {formatPrice(getTotalPrice() * 1.1)}
-                    </span>
+                    <span className="text-blue-600">{formatPrice(total)}</span>
                   </div>
                 </div>
               </div>
