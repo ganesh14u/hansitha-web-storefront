@@ -10,60 +10,39 @@ const WishlistPage: React.FC = () => {
   const { wishlist, toggleWishlist } = useWishlist();
   const { products, loading: productsLoading } = useContext(ProductContext);
   const { formatPrice } = useCurrency();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
   const [wishlistProducts, setWishlistProducts] = useState<any[]>([]);
 
-  // Redirect if not logged in
+  // Redirect if not logged in — only after auth check is done
   useEffect(() => {
-    if (!user) {
+    if (!authLoading && !user) {
       toastWithVoice.error("Please login to view your wishlist", {
         id: "wishlist-login",
       });
       navigate("/login");
     }
-  }, [user, navigate]);
+  }, [authLoading, user, navigate]);
 
   // Filter products based on wishlist
   useEffect(() => {
-    setLoading(true);
-    try {
-      if (Array.isArray(products)) {
-        const filtered = products.filter((p) => wishlist.includes(p._id));
-        setWishlistProducts(filtered);
-      } else {
-        setWishlistProducts([]);
-      }
-    } catch (err) {
-      console.error("Failed to filter wishlist:", err);
-      toastWithVoice.error("Could not load wishlist");
-    } finally {
-      setLoading(false);
+    if (Array.isArray(products)) {
+      setWishlistProducts(products.filter((p) => wishlist.includes(p._id)));
+    } else {
+      setWishlistProducts([]);
     }
   }, [products, wishlist]);
 
-  // Fallback timeout in case something goes wrong
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (loading) {
-        console.warn("⏱️ Timeout forcing loading = false");
-        setLoading(false);
-      }
-    }, 5000);
-    return () => clearTimeout(timeout);
-  }, [loading]);
-
-  if (!user) return null;
-
-  if (loading || productsLoading) {
+  if (authLoading || productsLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <p className="text-center py-10 text-lg">Loading wishlist...</p>
       </div>
     );
   }
+
+  if (!user) return null;
 
   if (wishlist.length === 0 || wishlistProducts.length === 0) {
     return (
@@ -100,7 +79,7 @@ const WishlistPage: React.FC = () => {
               <img
                 src={product.image}
                 alt={product.name}
-                className="w-full h-[280px] object-cover rounded  transform transition-transform duration-300 group-hover:scale-105"
+                className="w-full h-[280px] object-cover rounded transform transition-transform duration-300 group-hover:scale-105"
               />
               <button
                 onClick={async (e) => {
@@ -133,7 +112,6 @@ const WishlistPage: React.FC = () => {
                   {formatPrice(product.price)}
                 </span>
               </div>
-
               <div className="mt-3 flex justify-center">
                 <button
                   onClick={(e) => {
