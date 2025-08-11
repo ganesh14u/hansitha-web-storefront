@@ -73,6 +73,10 @@ const config: Config = {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        dark: "#1C212E",
+        green: "#16BF78",
+        sand: "#fbbf24",
+        "primary-light": "#f87171",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -84,9 +88,9 @@ const config: Config = {
       },
       keyframes: {
         marquee: {
-        "0%": { transform: "translateX(100%)" },
-        "100%": { transform: "translateX(-100%)" },
-      },
+          "0%": { transform: "translateX(100%)" },
+          "100%": { transform: "translateX(-100%)" },
+        },
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
@@ -95,19 +99,39 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        // 🚚 Truck animation keyframes
+        truck: {
+          "10%, 30%": { transform: "translateX(-164px)" },
+          "40%": { transform: "translateX(-104px)" },
+          "60%": { transform: "translateX(-224px)" },
+          "75%, 100%": { transform: "translateX(24px)" },
+        },
+        lines: {
+          "0%, 30%": { opacity: "0", transform: "scaleY(0.7) translateX(0)" },
+          "35%, 65%": { opacity: "1" },
+          "70%": { opacity: "0" },
+          "100%": { transform: "scaleY(0.7) translateX(-400px)" },
+        },
+        box: {
+          "8%, 10%": { transform: "translateX(40px)", opacity: "1" },
+          "25%": { transform: "translateX(112px)", opacity: "1" },
+          "26%": { transform: "translateX(112px)", opacity: "0" },
+          "27%, 100%": { transform: "translateX(0px)", opacity: "0" },
+        },
       },
       animation: {
         marquee: "marquee 20s linear infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         bounce: "bounce 1s infinite",
+        // 🚚 Truck animation classes
+        truck: "truck 10s ease forwards",
+        lines: "lines 10s ease forwards",
+        box: "box 10s ease forwards",
       },
     },
   },
-  plugins: [
-    animate,
-    scrollbarHide,
-  ],
+  plugins: [animate, scrollbarHide],
 };
 
 export default config;

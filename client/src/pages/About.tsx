@@ -1,17 +1,52 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FaAward, FaHeart, FaStar } from 'react-icons/fa';
-import { Footer } from '../components/Footer';
+import React, { useState, useEffect, useRef } from "react";
+import { FaAward, FaHeart, FaStar } from "react-icons/fa";
+import { Footer } from "../components/Footer";
+import { disableBodyScroll, clearAllBodyScrollLocks } from "body-scroll-lock";
 
-// --- Scroll Lock Utility ---
-import { disableBodyScroll, clearAllBodyScrollLocks } from 'body-scroll-lock';
-
-// Founder Image
 const founderImageUrl =
-  'https://res.cloudinary.com/duajnpevb/image/upload/v1753696486/b4aczypsgfqgye2sjlb1.jpg';
+  "https://res.cloudinary.com/duajnpevb/image/upload/v1753696486/b4aczypsgfqgye2sjlb1.jpg";
+
+// --- Animated Counter Hook with Trigger ---
+const useCountUpOnView = (end: number, duration: number, ref: React.RefObject<HTMLElement>) => {
+  const [count, setCount] = useState(0);
+  const [hasAnimated, setHasAnimated] = useState(false);
+
+  useEffect(() => {
+    if (!ref.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasAnimated) {
+          setHasAnimated(true);
+          const startTime = performance.now();
+
+          const step = (timestamp: number) => {
+            const progress = Math.min((timestamp - startTime) / duration, 1);
+            setCount(Math.floor(progress * end));
+            if (progress < 1) requestAnimationFrame(step);
+          };
+
+          requestAnimationFrame(step);
+        }
+      },
+      { threshold: 0.3 } // Trigger when 30% visible
+    );
+
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [end, duration, ref, hasAnimated]);
+
+  return count;
+};
 
 const AboutPage: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const yearsRef = useRef<HTMLDivElement>(null);
+  const customersRef = useRef<HTMLDivElement>(null);
+
+  const years = useCountUpOnView(15, 3000, yearsRef);
+  const customers = useCountUpOnView(5000, 3000, customersRef);
 
   // Lock body scroll when sidebar is open
   useEffect(() => {
@@ -30,7 +65,7 @@ const AboutPage: React.FC = () => {
       <main
         className="flex-grow font-serif text-gray-800"
         style={{
-          background: 'linear-gradient(to bottom right, #818cf8, #fca5a5)',
+          background: "linear-gradient(to bottom right, #818cf8, #fca5a5)",
         }}
       >
         <div className="max-w-4xl mx-auto py-16 px-4">
@@ -69,14 +104,22 @@ const AboutPage: React.FC = () => {
 
             {/* Stats Section */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center mb-20">
-              <div className="bg-white/50 p-6 rounded-xl shadow-lg backdrop-blur-sm">
+              <div
+                ref={yearsRef}
+                className="bg-white/50 p-6 rounded-xl shadow-lg backdrop-blur-sm"
+              >
                 <FaAward className="mx-auto text-5xl text-purple-600 mb-4" />
-                <p className="text-4xl font-bold text-gray-900">15+</p>
+                <p className="text-4xl font-bold text-gray-900">{years}+</p>
                 <p className="text-lg text-gray-600">Years of Experience</p>
               </div>
-              <div className="bg-white/50 p-6 rounded-xl shadow-lg backdrop-blur-sm">
+              <div
+                ref={customersRef}
+                className="bg-white/50 p-6 rounded-xl shadow-lg backdrop-blur-sm"
+              >
                 <FaHeart className="mx-auto text-5xl text-pink-500 mb-4" />
-                <p className="text-4xl font-bold text-gray-900">5000+</p>
+                <p className="text-4xl font-bold text-gray-900">
+                  {customers.toLocaleString()}+
+                </p>
                 <p className="text-lg text-gray-600">Happy Customers</p>
               </div>
               <div className="bg-white/50 p-6 rounded-xl shadow-lg backdrop-blur-sm">
