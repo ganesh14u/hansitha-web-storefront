@@ -92,7 +92,10 @@ const Checkout: React.FC = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    // Start animation immediately
+    setAnimateTruck(true);
     setIsProcessing(true);
+
     try {
       const { email, firstName, lastName, phone } = formData;
 
@@ -106,13 +109,9 @@ const Checkout: React.FC = () => {
 
       const link = res.data.paymentLink.short_url;
 
-      // Start animation after success response
-      setAnimateTruck(true);
+      // Wait 3 seconds to let animation play
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Wait for animation to complete (~8s)
-      await new Promise((resolve) => setTimeout(resolve, 8000));
-
-      // DO NOT clear cart here, wait for payment success event elsewhere
       setPaymentLink(link);
       setHasOrdered(true);
     } catch (err) {
@@ -122,9 +121,10 @@ const Checkout: React.FC = () => {
         description: "Failed to get payment link",
         variant: "destructive",
       });
+
+      setAnimateTruck(false);
     } finally {
       setIsProcessing(false);
-      setAnimateTruck(false);
     }
   };
 
