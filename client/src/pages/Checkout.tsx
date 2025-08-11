@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useProducts } from "../context/ProductContext";
@@ -16,7 +16,7 @@ import { TruckButton } from "../components/TruckButton";
 const API_URL = import.meta.env.VITE_API_URL;
 
 const Checkout: React.FC = () => {
-  const { cartItems, getTotalPrice, clearCart } = useCart();
+  const { cartItems, getTotalPrice } = useCart();
   const { reloadProducts } = useProducts();
   reloadProducts();
 
@@ -24,6 +24,9 @@ const Checkout: React.FC = () => {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [animateTruck, setAnimateTruck] = useState(false);
+
+  const [paymentLink, setPaymentLink] = useState<string | null>(null);
+  const [hasOrdered, setHasOrdered] = useState(false);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -55,7 +58,9 @@ const Checkout: React.FC = () => {
       if (!formData[field as keyof typeof formData]) {
         toast({
           title: "Error",
-          description: `Please fill in the ${field.replace(/([A-Z])/g, " $1").toLowerCase()} field.`,
+          description: `Please fill in the ${field
+            .replace(/([A-Z])/g, " $1")
+            .toLowerCase()} field.`,
           variant: "destructive",
         });
         return false;
@@ -64,7 +69,23 @@ const Checkout: React.FC = () => {
     return true;
   };
 
+  // Calculate subtotal
   const subtotal = getTotalPrice();
+
+  // Redirect to cart if subtotal is 0 (empty cart), but only if user has NOT just ordered
+  useEffect(() => {
+    if (subtotal === 0 && !hasOrdered) {
+      navigate("/cart");
+    }
+  }, [subtotal, navigate, hasOrdered]);
+
+  // Redirect to payment link once order is placed
+  useEffect(() => {
+    if (hasOrdered && paymentLink) {
+      window.location.href = paymentLink;
+    }
+  }, [hasOrdered, paymentLink]);
+
   const { shipping, tax, total } = calculatePricing(subtotal);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,7 +104,7 @@ const Checkout: React.FC = () => {
         totalAmount: total,
       });
 
-      const paymentLink = res.data.paymentLink.short_url;
+      const link = res.data.paymentLink.short_url;
 
       // Start animation after success response
       setAnimateTruck(true);
@@ -91,8 +112,9 @@ const Checkout: React.FC = () => {
       // Wait for animation to complete (~8s)
       await new Promise((resolve) => setTimeout(resolve, 8000));
 
-      await clearCart();
-      window.location.href = paymentLink;
+      // DO NOT clear cart here, wait for payment success event elsewhere
+      setPaymentLink(link);
+      setHasOrdered(true);
     } catch (err) {
       console.error("Error:", err);
       toast({
@@ -106,25 +128,15 @@ const Checkout: React.FC = () => {
     }
   };
 
-  if (cartItems.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-400 to-pink-400 p-8">
-        <Card className="w-full max-w-md">
-          <CardContent className="text-center py-8">
-            <h2 className="text-2xl font-semibold mb-4">Your cart is empty</h2>
-            <Button onClick={() => navigate("/shop")}>Continue Shopping</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-400 to-pink-400 py-8">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <form
+            onSubmit={handleSubmit}
+            className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+          >
             <div className="space-y-6">
               <CheckoutSection
                 icon={<User className="w-5 h-5" />}
@@ -148,7 +160,10 @@ const Checkout: React.FC = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {cartItems.map((item) => (
-                      <div key={item.id} className="flex items-center space-x-4">
+                      <div
+                        key={item.id}
+                        className="flex items-center space-x-4"
+                      >
                         <img
                           src={item.image}
                           alt={item.name}
@@ -156,12 +171,18 @@ const Checkout: React.FC = () => {
                         />
                         <div className="flex-1">
                           <h3 className="text-sm font-medium">{item.name}</h3>
-                          <p className="text-gray-600 text-sm">Qty: {item.quantity}</p>
+                          <p className="text-gray-600 text-sm">
+                            Qty: {item.quantity}
+                          </p>
                         </div>
                         <p className="font-medium">
-                          ₹{(item.price * item.quantity).toLocaleString("en-IN", {
-                            minimumFractionDigits: 2,
-                          })}
+                          ₹
+                          {(item.price * item.quantity).toLocaleString(
+                            "en-IN",
+                            {
+                              minimumFractionDigits: 2,
+                            }
+                          )}
                         </p>
                       </div>
                     ))}
@@ -175,7 +196,12 @@ const Checkout: React.FC = () => {
                       <Separator />
                       <div className="flex justify-between text-lg font-semibold">
                         <span>Total</span>
-                        <span>₹{total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                        <span>
+                          ₹
+                          {total.toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </span>
                       </div>
                     </div>
 
@@ -200,7 +226,8 @@ const Checkout: React.FC = () => {
                     </div>
 
                     <p className="text-sm text-center text-gray-600 flex items-center justify-center gap-1 mt-2">
-                      <Lock className="w-3 h-3" /> Your order details are safe and secure.
+                      <Lock className="w-3 h-3" /> Your order details are safe
+                      and secure.
                     </p>
                   </div>
                 </CardContent>
@@ -216,10 +243,28 @@ const Checkout: React.FC = () => {
 export default Checkout;
 
 // Reusable Components
-const InputGroup = ({ id, label, value, onChange, maxLength }: any) => (
+const InputGroup = ({
+  id,
+  label,
+  value,
+  onChange,
+  maxLength,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  maxLength?: number;
+}) => (
   <div>
     <Label htmlFor={id}>{label}</Label>
-    <Input id={id} name={id} value={value} onChange={onChange} maxLength={maxLength} />
+    <Input
+      id={id}
+      name={id}
+      value={value}
+      onChange={onChange}
+      maxLength={maxLength}
+    />
   </div>
 );
 
@@ -239,8 +284,8 @@ const CheckoutSection = ({
 }: {
   icon: React.ReactNode;
   title: string;
-  fields: any[];
-  formData: any;
+  fields: { id: string; label: string; maxLength?: number }[];
+  formData: Record<string, string>;
   handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) => (
   <Card>
