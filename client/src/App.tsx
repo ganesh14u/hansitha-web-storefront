@@ -221,9 +221,7 @@ const AppRoutes = () => {
       <Route
         path="/account"
         element={
-          <Layout>
             <Account />
-          </Layout>
         }
       />
       <Route
