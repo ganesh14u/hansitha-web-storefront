@@ -28,11 +28,18 @@ const Checkout: React.FC = () => {
   const [paymentLink, setPaymentLink] = useState<string | null>(null);
   const [hasOrdered, setHasOrdered] = useState(false);
 
+  // Extended formData with address fields
   const [formData, setFormData] = useState({
     email: "",
     firstName: "",
     lastName: "",
     phone: "",
+    address1: "",
+    address2: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "",
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,17 +50,19 @@ const Checkout: React.FC = () => {
     }));
   };
 
-  const isFormValid = useMemo(() => {
-    return (
-      formData.email.trim() !== "" &&
-      formData.firstName.trim() !== "" &&
-      formData.lastName.trim() !== "" &&
-      formData.phone.trim() !== ""
-    );
-  }, [formData]);
-
+  // Updated form validation including address
   const validateForm = () => {
-    const requiredFields = ["email", "firstName", "lastName", "phone"];
+    const requiredFields = [
+      "email",
+      "firstName",
+      "lastName",
+      "phone",
+      "address1",
+      "city",
+      "state",
+      "postalCode",
+      "country",
+    ];
     for (const field of requiredFields) {
       if (!formData[field as keyof typeof formData]) {
         toast({
@@ -68,6 +77,24 @@ const Checkout: React.FC = () => {
     }
     return true;
   };
+
+  // Updated isFormValid to include address fields
+  const isFormValid = useMemo(() => {
+    const requiredFields = [
+      "email",
+      "firstName",
+      "lastName",
+      "phone",
+      "address1",
+      "city",
+      "state",
+      "postalCode",
+      "country",
+    ];
+    return requiredFields.every(
+      (field) => formData[field as keyof typeof formData].trim() !== ""
+    );
+  }, [formData]);
 
   // Calculate subtotal
   const subtotal = getTotalPrice();
@@ -97,19 +124,38 @@ const Checkout: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      const { email, firstName, lastName, phone } = formData;
+      const {
+        email,
+        firstName,
+        lastName,
+        phone,
+        address1,
+        address2,
+        city,
+        state,
+        postalCode,
+        country,
+      } = formData;
 
       const res = await axios.post(`${API_URL}/api/checkout/payment-link`, {
         userName: `${firstName} ${lastName}`,
         userEmail: email,
         userPhone: phone,
+        shippingAddress: {
+          address1,
+          address2,
+          city,
+          state,
+          postalCode,
+          country,
+        },
         cartItems,
         totalAmount: total,
       });
 
       const link = res.data.paymentLink.short_url;
 
-      // Wait 3 seconds to let animation play
+      // Wait 2 seconds to let animation play
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       setPaymentLink(link);
@@ -146,6 +192,21 @@ const Checkout: React.FC = () => {
                   { id: "firstName", label: "First Name" },
                   { id: "lastName", label: "Last Name" },
                   { id: "phone", label: "Phone Number", maxLength: 10 },
+                ]}
+                formData={formData}
+                handleChange={handleInputChange}
+              />
+
+              <CheckoutSection
+                icon={<User className="w-5 h-5" />}
+                title="Shipping Address"
+                fields={[
+                  { id: "address1", label: "Address Line 1" },
+                  { id: "address2", label: "Address Line 2 (Optional)" },
+                  { id: "city", label: "City" },
+                  { id: "state", label: "State / Province" },
+                  { id: "postalCode", label: "Postal Code" },
+                  { id: "country", label: "Country" },
                 ]}
                 formData={formData}
                 handleChange={handleInputChange}
