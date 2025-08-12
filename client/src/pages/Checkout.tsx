@@ -28,7 +28,7 @@ const Checkout: React.FC = () => {
   const [paymentLink, setPaymentLink] = useState<string | null>(null);
   const [hasOrdered, setHasOrdered] = useState(false);
 
-  // Extended formData with address fields
+  // Form state including address
   const [formData, setFormData] = useState({
     email: "",
     firstName: "",
@@ -50,7 +50,7 @@ const Checkout: React.FC = () => {
     }));
   };
 
-  // Updated form validation including address
+  // Form validation
   const validateForm = () => {
     const requiredFields = [
       "email",
@@ -78,7 +78,7 @@ const Checkout: React.FC = () => {
     return true;
   };
 
-  // Updated isFormValid to include address fields
+  // Form valid check for button disabling
   const isFormValid = useMemo(() => {
     const requiredFields = [
       "email",
@@ -99,14 +99,14 @@ const Checkout: React.FC = () => {
   // Calculate subtotal
   const subtotal = getTotalPrice();
 
-  // Redirect to cart if subtotal is 0 (empty cart), but only if user has NOT just ordered
+  // Redirect to cart if empty and not just ordered
   useEffect(() => {
     if (subtotal === 0 && !hasOrdered) {
       navigate("/cart");
     }
   }, [subtotal, navigate, hasOrdered]);
 
-  // Redirect to payment link once order is placed
+  // Redirect to payment page on success
   useEffect(() => {
     if (hasOrdered && paymentLink) {
       window.location.href = paymentLink;
@@ -119,7 +119,6 @@ const Checkout: React.FC = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    // Start animation immediately
     setAnimateTruck(true);
     setIsProcessing(true);
 
@@ -137,7 +136,10 @@ const Checkout: React.FC = () => {
         country,
       } = formData;
 
-      const res = await axios.post(`${API_URL}/api/checkout/payment-link`, {
+      // Send data with correct keys matching backend payment-link route
+      const res = await axios.post(`${API_URL}/api/payment/payment-link`, {
+        totalAmount: total,
+        cartItems,
         userName: `${firstName} ${lastName}`,
         userEmail: email,
         userPhone: phone,
@@ -149,13 +151,11 @@ const Checkout: React.FC = () => {
           postalCode,
           country,
         },
-        cartItems,
-        totalAmount: total,
       });
 
       const link = res.data.paymentLink.short_url;
 
-      // Wait 2 seconds to let animation play
+      // Let animation play a bit
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       setPaymentLink(link);
@@ -238,12 +238,9 @@ const Checkout: React.FC = () => {
                         </div>
                         <p className="font-medium">
                           ₹
-                          {(item.price * item.quantity).toLocaleString(
-                            "en-IN",
-                            {
-                              minimumFractionDigits: 2,
-                            }
-                          )}
+                          {(item.price * item.quantity).toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                          })}
                         </p>
                       </div>
                     ))}
@@ -266,7 +263,7 @@ const Checkout: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Centered Truck Button */}
+                    {/* Truck Button */}
                     <div className="mt-6 flex justify-center">
                       <TruckButton
                         type="submit"
@@ -287,8 +284,8 @@ const Checkout: React.FC = () => {
                     </div>
 
                     <p className="text-sm text-center text-gray-600 flex items-center justify-center gap-1 mt-2">
-                      <Lock className="w-3 h-3" /> Your order details are safe
-                      and secure.
+                      <Lock className="w-3 h-3" /> Your order details are safe and
+                      secure.
                     </p>
                   </div>
                 </CardContent>
@@ -303,7 +300,8 @@ const Checkout: React.FC = () => {
 
 export default Checkout;
 
-// Reusable Components
+// Reusable components
+
 const InputGroup = ({
   id,
   label,
@@ -319,13 +317,7 @@ const InputGroup = ({
 }) => (
   <div>
     <Label htmlFor={id}>{label}</Label>
-    <Input
-      id={id}
-      name={id}
-      value={value}
-      onChange={onChange}
-      maxLength={maxLength}
-    />
+    <Input id={id} name={id} value={value} onChange={onChange} maxLength={maxLength} />
   </div>
 );
 

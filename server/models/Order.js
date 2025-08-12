@@ -34,6 +34,14 @@ const orderSchema = new mongoose.Schema({
       quantity: { type: Number, required: true },
     },
   ],
+  address: {
+    address1: String,
+    address2: String,
+    city: String,
+    state: String,
+    postalCode: String,
+    country: String,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
