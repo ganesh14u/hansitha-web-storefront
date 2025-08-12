@@ -1,5 +1,13 @@
-import { useEffect } from "react";
-import { useLocation, BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+// src/App.tsx
+import React, { useEffect, useState } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -8,6 +16,7 @@ import { CartProvider } from "./context/CartContext";
 import { ProductProvider } from "./context/ProductContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import { WishlistProvider } from "./context/WishlistContext";
+import SpeedLoader from "./components/SpeedLoader";
 
 // WebSocket
 import { connectSocket, getSocket } from "./sockets/socket";
@@ -55,38 +64,205 @@ import EditProduct from "./components/EditProduct";
 
 const queryClient = new QueryClient();
 
+
+
+/* ----------------
+   AppRoutes component
+   ----------------
+   Kept inside this file so we can use hooks (useLocation/useNavigate)
+   IMPORTANT: this component must be rendered inside BrowserRouter
+*/
 const AppRoutes = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
   return (
     <Routes>
-      {/* Public Routes */}
-      <Route path="/" element={<Layout><Home /></Layout>} />
-      <Route path="/announcement" element={<AnnouncementBar />} />
-      <Route path="/shop" element={<Layout><Shop /></Layout>} />
-      <Route path="/cart" element={<Layout><Cart /></Layout>} />
-      <Route path="/order-confirmation" element={<Layout><OrderConfirmation /></Layout>} />
-      <Route path="/search" element={<Layout><SearchResults /></Layout>} />
-      <Route path="/featured" element={<Layout><FeaturedProducts /></Layout>} />
-      <Route path="/fabrics/:category" element={<Layout><CategoryPage /></Layout>} />
-      <Route path="/checkout" element={<Layout><Checkout /></Layout>} />
-      <Route path="/about" element={<Layout><AboutPage /></Layout>} />
-      <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
-      <Route path="/new-arrivals" element={<Layout><NewArrivalsPage /></Layout>} />
-      <Route path="/ceo-collections" element={<Layout><CEOCollectionsPage /></Layout>} />
-      <Route path="/product/:name" element={<Layout><ProductDetailsPage key={location.pathname} /></Layout>} />
-      <Route path="/login" element={<Layout><Login /></Layout>} />
-      <Route path="/register" element={<Layout><Register /></Layout>} />
-      <Route path="/wishlist" element={<Layout><WishlistPage /></Layout>} />
-      <Route path="/account" element={<Account />} />
-      <Route path="/orders" element={<Orders />} />
-      <Route path="/addresses" element={<Addresses />} />
-      <Route path="/login/sso-callback" element={<SSORedirectHandler />} />
-      <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
+      {/* Public Routes (wrapped in Layout for consistent header/footer) */}
+      <Route
+        path="/"
+        element={
+          <Layout>
+            <Home />
+          </Layout>
+        }
+      />
+      <Route
+        path="/announcement"
+        element={
+          <Layout>
+            <AnnouncementBar />
+          </Layout>
+        }
+      />
+      <Route
+        path="/shop"
+        element={
+          <Layout>
+            <Shop />
+          </Layout>
+        }
+      />
+      <Route
+        path="/cart"
+        element={
+          <Layout>
+            <Cart />
+          </Layout>
+        }
+      />
+      <Route
+        path="/order-confirmation"
+        element={
+          <Layout>
+            <OrderConfirmation />
+          </Layout>
+        }
+      />
+      <Route
+        path="/search"
+        element={
+          <Layout>
+            <SearchResults />
+          </Layout>
+        }
+      />
+      <Route
+        path="/featured"
+        element={
+          <Layout>
+            <FeaturedProducts />
+          </Layout>
+        }
+      />
+      <Route
+        path="/fabrics/:category"
+        element={
+          <Layout>
+            <CategoryPage />
+          </Layout>
+        }
+      />
+      <Route
+        path="/product/:name"
+        element={
+          // key on pathname ensures component remounts on navigation between products
+          <Layout>
+            <ProductDetailsPage key={location.pathname} />
+          </Layout>
+        }
+      />
+      <Route
+        path="/checkout"
+        element={
+          <Layout>
+            <Checkout />
+          </Layout>
+        }
+      />
+      <Route
+        path="/about"
+        element={
+          <Layout>
+            <AboutPage />
+          </Layout>
+        }
+      />
+      <Route
+        path="/contact"
+        element={
+          <Layout>
+            <ContactPage />
+          </Layout>
+        }
+      />
+      <Route
+        path="/new-arrivals"
+        element={
+          <Layout>
+            <NewArrivalsPage />
+          </Layout>
+        }
+      />
+      <Route
+        path="/ceo-collections"
+        element={
+          <Layout>
+            <CEOCollectionsPage />
+          </Layout>
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          <Layout>
+            <Login />
+          </Layout>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <Layout>
+            <Register />
+          </Layout>
+        }
+      />
+      <Route
+        path="/wishlist"
+        element={
+          <Layout>
+            <WishlistPage />
+          </Layout>
+        }
+      />
 
-      {/* Admin Layout + Nested Routes */}
-      <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+      {/* Account-related pages — wrap in Layout so user sees header/sidebar */}
+      <Route
+        path="/account"
+        element={
+          <Layout>
+            <Account />
+          </Layout>
+        }
+      />
+      <Route
+        path="/orders"
+        element={
+          <Layout>
+            <Orders />
+          </Layout>
+        }
+      />
+      <Route
+        path="/addresses"
+        element={
+          <Layout>
+            <Addresses />
+          </Layout>
+        }
+      />
+
+      <Route path="/login/sso-callback" element={<SSORedirectHandler />} />
+      <Route
+        path="/privacy-policy"
+        element={
+          <Layout>
+            <PrivacyPolicy />
+          </Layout>
+        }
+      />
+
+      {/* Admin Layout + Nested Routes (protected via AdminRoute) */}
+      <Route
+        path="/admin/*"
+        element={
+          <AdminRoute>
+            <AdminLayout />
+          </AdminRoute>
+        }
+      >
+        {/* index redirect within admin */}
         <Route index element={<Navigate to="add" replace />} />
         <Route path="add" element={<AddProduct />} />
         <Route
@@ -107,25 +283,51 @@ const AppRoutes = () => {
         <Route path="profile" element={<AdminProfile />} />
       </Route>
 
-      {/* 404 Page */}
-      <Route path="/*" element={<NotFound />} />
+      {/* 404 (use Layout so header/footer remain consistent) */}
+      <Route
+        path="/*"
+        element={
+          <Layout>
+            <NotFound />
+          </Layout>
+        }
+      />
     </Routes>
   );
 };
 
-const App = () => {
+/* ----------------
+   Main App
+   ----------------
+*/
+const App: React.FC = () => {
+  // show cinematic loader on first mount
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
+    // connect websocket once on mount
     connectSocket();
 
     const socket = getSocket();
+    if (socket) {
+      socket.on("refresh", () => {
+        console.log("🔄 Received refresh event from server");
+        // Optionally: queryClient.invalidateQueries(...) if needed
+      });
+    }
 
-    socket.on("refresh", () => {
-      console.log("🔄 Received refresh event from server");
-      // Optional: trigger re-fetch or toast notification
-    });
+    // cinematic loader duration (adjust as desired)
+    const loaderTimer = setTimeout(() => setLoading(false), 3000);
 
     return () => {
-      socket.disconnect();
+      // cleanup loader timer
+      clearTimeout(loaderTimer);
+
+      // disconnect socket safely
+      const s = getSocket();
+      if (s && typeof s.disconnect === "function") {
+        s.disconnect();
+      }
     };
   }, []);
 
@@ -139,6 +341,8 @@ const App = () => {
                 <BrowserRouter>
                   <CurrencyProvider>
                     <LiveReloadListener />
+
+                    {/* Sonner toaster */}
                     <Sonner
                       position="bottom-right"
                       expand={true}
@@ -148,10 +352,17 @@ const App = () => {
                       className="sonner-toast"
                       toastOptions={{
                         style: {
-                          marginBottom: window.innerWidth < 768 ? "5rem" : "1rem",
+                          // prefer dynamic margin but guard for SSR/undefined window
+                          marginBottom:
+                            typeof window !== "undefined" &&
+                            window.innerWidth < 768
+                              ? "5rem"
+                              : "1rem",
                         },
                       }}
                     />
+
+                    {/* invisible aria-live region for accessibility */}
                     <div
                       id="toast-announcer"
                       aria-live="polite"
@@ -164,6 +375,20 @@ const App = () => {
                         overflow: "hidden",
                       }}
                     />
+
+                    {/* cinematic loader overlay */}
+                    <div
+                      className={`fixed inset-0 transition-opacity duration-700 bg-white z-50 flex items-center justify-center ${
+                        loading
+                          ? "opacity-100"
+                          : "opacity-0 pointer-events-none"
+                      }`}
+                      aria-hidden={!loading}
+                    >
+                      <SpeedLoader />
+                    </div>
+
+                    {/* App routes */}
                     <AppRoutes />
                   </CurrencyProvider>
                 </BrowserRouter>
