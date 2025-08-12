@@ -61,7 +61,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         target="_blank"
         rel="noopener noreferrer"
         title="Need Help?"
-        className="fixed bottom-20 right-4 z-50"
+        className="fixed bottom-20 right-4 z-40"
       >
         <img
           src="https://res.cloudinary.com/duajnpevb/image/upload/v1753201622/icons8-whatsapp_z14ytx.svg"
