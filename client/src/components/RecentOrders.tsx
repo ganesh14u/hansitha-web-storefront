@@ -3,7 +3,7 @@ import axios from "axios";
 import { ChevronDown, ChevronUp, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AccountSection } from "./AccountSection";
-import { useAuth } from "@/context/AuthContext"; // ✅ import your auth context
+import { useAuth } from "@/context/AuthContext";
 
 interface ProductItem {
   _id?: string;
@@ -25,31 +25,44 @@ interface Order {
 }
 
 export function RecentOrders() {
-  const { user } = useAuth(); // ✅ get logged-in user
+  const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
-    if (!user?.email) return; // ✅ don't run if not logged in
+    if (!user?.email) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
 
     const fetchOrders = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/orders`, {
           withCredentials: true,
         });
+        console.log("Raw response data:", res.data);
 
-        const sorted = res.data.orders
-          .filter((order: Order) => order.email === user.email) // ✅ match logged-in email
+        // Since your backend returns the array directly:
+        const ordersData = Array.isArray(res.data) ? res.data : [];
+        if (ordersData.length === 0) {
+          setOrders([]);
+          return;
+        }
+
+        const filteredSortedOrders = ordersData
+          .filter((order: Order) => order.email === user.email)
           .sort(
             (a: Order, b: Order) =>
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           );
 
-        setOrders(sorted.slice(0, 20));
+        setOrders(filteredSortedOrders.slice(0, 20));
       } catch (err) {
         console.error("Failed to fetch recent orders", err);
+        setOrders([]);
       } finally {
         setLoading(false);
       }
@@ -66,9 +79,7 @@ export function RecentOrders() {
           Loading recent orders...
         </div>
       ) : orders.length === 0 ? (
-        <p className="text-gray-500 text-center py-6">
-          No recent orders found.
-        </p>
+        <p className="text-gray-500 text-center py-6">No recent orders found.</p>
       ) : (
         <div className="space-y-4">
           {orders.map((order) => {
@@ -103,11 +114,7 @@ export function RecentOrders() {
                     </p>
                   </div>
                   <div className="text-gray-600 dark:text-gray-300">
-                    {isOpen ? (
-                      <ChevronUp size={20} />
-                    ) : (
-                      <ChevronDown size={20} />
-                    )}
+                    {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                   </div>
                 </div>
 
