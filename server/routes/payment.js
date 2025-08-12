@@ -11,7 +11,7 @@ const razorpay = new Razorpay({
 
 // POST /api/payment/payment-link - Create order & Razorpay payment link
 router.post("/payment-link", async (req, res) => {
-  const { amount, cartItems, customer, address } = req.body; // include address here
+  const { amount, cartItems, customer } = req.body;
 
   try {
     // Save order with status "pending"
@@ -21,7 +21,6 @@ router.post("/payment-link", async (req, res) => {
       phone: customer.phone,
       amount,
       products: cartItems,
-      address,      // save address
       status: "pending",
     });
 
