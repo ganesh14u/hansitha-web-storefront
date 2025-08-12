@@ -1,82 +1,165 @@
-import { Package, Truck, CheckCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { ChevronDown, ChevronUp, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { AccountSection } from "./AccountSection";
+import { useAuth } from "@/context/AuthContext"; // ✅ import your auth context
 
-const recentOrders = [
-  {
-    id: "ORD-001",
-    date: "2024-01-15",
-    status: "delivered",
-    total: "$89.99",
-    items: 3,
-    image: "/placeholder.svg"
-  },
-  {
-    id: "ORD-002", 
-    date: "2024-01-10",
-    status: "in-transit",
-    total: "$124.50",
-    items: 2,
-    image: "/placeholder.svg"
-  },
-  {
-    id: "ORD-003",
-    date: "2024-01-05",
-    status: "processing",
-    total: "$67.25",
-    items: 1,
-    image: "/placeholder.svg"
-  }
-];
+interface ProductItem {
+  _id?: string;
+  id?: string;
+  name: string;
+  price: number;
+  image: string;
+  quantity: number;
+}
 
-const statusConfig = {
-  delivered: { label: "Delivered", icon: CheckCircle, color: "bg-green-100 text-green-800" },
-  "in-transit": { label: "In Transit", icon: Truck, color: "bg-blue-100 text-blue-800" },
-  processing: { label: "Processing", icon: Package, color: "bg-yellow-100 text-yellow-800" }
-};
+interface Order {
+  _id: string;
+  email: string;
+  address: string;
+  products: ProductItem[];
+  totalAmount: number;
+  createdAt: string;
+  status?: string;
+}
 
 export function RecentOrders() {
-  return (
-    <AccountSection 
-      title="Recent Orders" 
-      icon={<Package className="h-5 w-5 text-primary" />}
-    >
-      <div className="space-y-4">
-        {recentOrders.map((order) => {
-          const status = statusConfig[order.status as keyof typeof statusConfig];
-          const StatusIcon = status.icon;
-          
-          return (
-            <div key={order.id} className="flex items-center gap-4 p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors">
-              <div className="h-12 w-12 bg-muted rounded-lg flex items-center justify-center">
-                <Package className="h-6 w-6 text-muted-foreground" />
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h4 className="font-medium">{order.id}</h4>
-                  <Badge variant="secondary" className={status.color}>
-                    <StatusIcon className="h-3 w-3 mr-1" />
-                    {status.label}
-                  </Badge>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {order.date} • {order.items} item{order.items > 1 ? 's' : ''} • {order.total}
-                </div>
-              </div>
-              
-              <Button variant="outline" size="sm">
-                View Details
-              </Button>
-            </div>
+  const { user } = useAuth(); // ✅ get logged-in user
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const API_URL = import.meta.env.VITE_API_URL;
+
+  useEffect(() => {
+    if (!user?.email) return; // ✅ don't run if not logged in
+
+    const fetchOrders = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/orders`, {
+          withCredentials: true,
+        });
+
+        const sorted = res.data.orders
+          .filter((order: Order) => order.email === user.email) // ✅ match logged-in email
+          .sort(
+            (a: Order, b: Order) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           );
-        })}
-        
-        <Button variant="premium" className="w-full">
-          View All Orders
-        </Button>
-      </div>
+
+        setOrders(sorted.slice(0, 20));
+      } catch (err) {
+        console.error("Failed to fetch recent orders", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [user?.email]);
+
+  return (
+    <AccountSection title="Recent Orders">
+      {loading ? (
+        <div className="flex items-center justify-center py-6 text-primary">
+          <Loader className="animate-spin w-5 h-5 mr-2" />
+          Loading recent orders...
+        </div>
+      ) : orders.length === 0 ? (
+        <p className="text-gray-500 text-center py-6">
+          No recent orders found.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {orders.map((order) => {
+            const isOpen = expanded[order._id] || false;
+            const totalPrice = order.products.reduce(
+              (sum, item) =>
+                sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
+              0
+            );
+
+            return (
+              <div
+                key={order._id}
+                className="border rounded-xl p-4 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 hover:brightness-105 transition-all duration-200"
+              >
+                <div
+                  className="flex justify-between items-center cursor-pointer"
+                  onClick={() =>
+                    setExpanded((prev) => ({
+                      ...prev,
+                      [order._id]: !prev[order._id],
+                    }))
+                  }
+                >
+                  <div>
+                    <p className="text-xs text-gray-600">Order ID</p>
+                    <p className="font-semibold text-primary truncate max-w-[240px]">
+                      {order._id}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {new Date(order.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="text-gray-600 dark:text-gray-300">
+                    {isOpen ? (
+                      <ChevronUp size={20} />
+                    ) : (
+                      <ChevronDown size={20} />
+                    )}
+                  </div>
+                </div>
+
+                {isOpen && (
+                  <div className="mt-4 space-y-3 text-sm">
+                    <p>
+                      <strong>Email:</strong> {order.email}
+                    </p>
+                    <p>
+                      <strong>Address:</strong> {order.address}
+                    </p>
+
+                    <div className="grid gap-3 sm:grid-cols-2 mt-2">
+                      {order.products.map((item, idx) => (
+                        <div
+                          key={item._id || item.id || idx}
+                          className="flex items-center gap-3 bg-white dark:bg-neutral-900 rounded-lg p-2 border"
+                        >
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-12 h-12 object-cover rounded border"
+                          />
+                          <div className="text-sm">
+                            <p className="font-medium">{item.name}</p>
+                            <p className="text-xs text-gray-500">
+                              Qty: {item.quantity} × ₹{item.price} = ₹
+                              {(item.quantity * item.price).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="mt-3 font-semibold text-green-600 dark:text-green-400">
+                      Total: ₹{totalPrice.toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <Button
+            variant="premium"
+            className="w-full"
+            onClick={() => (window.location.href = "/account/orders")}
+          >
+            View All Orders
+          </Button>
+        </div>
+      )}
     </AccountSection>
   );
 }
