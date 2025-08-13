@@ -17,6 +17,7 @@ import { ProductProvider } from "./context/ProductContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import { WishlistProvider } from "./context/WishlistContext";
 import SpeedLoader from "./components/SpeedLoader";
+import { ThemeProvider } from "@/components/theme-provider"
 
 // WebSocket
 import { connectSocket, getSocket } from "./sockets/socket";
@@ -330,6 +331,7 @@ const App: React.FC = () => {
   }, []);
 
   return (
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
@@ -396,6 +398,7 @@ const App: React.FC = () => {
         </TooltipProvider>
       </QueryClientProvider>
     </AuthProvider>
+    </ThemeProvider>
   );
 };
 
