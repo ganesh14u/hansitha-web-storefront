@@ -23,14 +23,6 @@ const SpeederLoader: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Main Image Below */}
-      <div className="main fade-in">
-        <img
-          src="https://res.cloudinary.com/duajnpevb/image/upload/v1754997632/ChatGPT_Image_Aug_12_2025_04_37_22_PM_bdysrp.png"
-          alt="Main Image"
-        />
-      </div>
     </div>
   );
 };
