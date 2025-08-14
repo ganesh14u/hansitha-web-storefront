@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { ChevronDown, ChevronUp, Loader } from "lucide-react";
+import { io, Socket } from "socket.io-client";
+import { ChevronDown, ChevronUp, Loader, Package, Truck, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AccountSection } from "./AccountSection";
 import { useAuth } from "@/context/AuthContext";
@@ -21,21 +22,20 @@ interface Order {
   products: ProductItem[];
   totalAmount: number;
   createdAt: string;
-  status?: string; // optional general status
-  deliveryStatus?: string; // optional delivery-specific status
+  status?: string;
+  deliveryStatus?: string;
 }
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 export function RecentOrders() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const API_URL = import.meta.env.VITE_API_URL;
+  const [socket, setSocket] = useState<Socket | null>(null);
 
-  // Format address safely
-  const formatAddress = (
-    address: string | Record<string, unknown> | undefined
-  ) => {
+  const formatAddress = (address: string | Record<string, unknown> | undefined) => {
     if (!address) return "N/A";
     if (typeof address === "string") return address.trim() || "N/A";
     if (typeof address === "object" && address !== null) {
@@ -46,39 +46,73 @@ export function RecentOrders() {
     return "N/A";
   };
 
-  useEffect(() => {
-    if (!user?.email) {
+  // Fetch orders
+  const fetchOrders = async () => {
+    if (!user?.email) return;
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API_URL}/api/orders`, { withCredentials: true });
+      const ordersData: Order[] = Array.isArray(res.data) ? res.data : [];
+      const filteredSortedOrders = ordersData
+        .filter((order) => order.email === user.email)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setOrders(filteredSortedOrders.slice(0, 20));
+    } catch (err) {
+      console.error("Failed to fetch recent orders", err);
       setOrders([]);
+    } finally {
       setLoading(false);
-      return;
     }
+  };
 
-    const fetchOrders = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/api/orders`, {
-          withCredentials: true,
-        });
+  // Get status badge with icon
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case "Processing":
+        return (
+          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white text-yellow-500">
+            <Package size={14} /> Processing
+          </span>
+        );
+      case "Shipping":
+        return (
+          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white text-blue-500">
+            <Truck size={14} /> Shipping
+          </span>
+        );
+      case "Delivered":
+        return (
+          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white text-green-600">
+            <CheckCircle size={14} /> Delivered
+          </span>
+        );
+      default:
+        return (
+          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-500">
+            {status || "Unknown"}
+          </span>
+        );
+    }
+  };
 
-        const ordersData: Order[] = Array.isArray(res.data) ? res.data : [];
-
-        const filteredSortedOrders = ordersData
-          .filter((order) => order.email === user.email)
-          .sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() -
-              new Date(a.createdAt).getTime()
-          );
-
-        setOrders(filteredSortedOrders.slice(0, 20));
-      } catch (err) {
-        console.error("Failed to fetch recent orders", err);
-        setOrders([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  useEffect(() => {
     fetchOrders();
+
+    // Setup Socket.IO for real-time updates
+    const newSocket = io(API_URL);
+    setSocket(newSocket);
+
+    newSocket.on("orderStatusUpdated", (updatedOrder: Order) => {
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === updatedOrder._id ? { ...order, deliveryStatus: updatedOrder.deliveryStatus } : order
+        )
+      );
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
   }, [user?.email]);
 
   return (
@@ -89,17 +123,13 @@ export function RecentOrders() {
           Loading recent orders...
         </div>
       ) : orders.length === 0 ? (
-        <p className="text-gray-500 text-center py-6">
-          No recent orders found.
-        </p>
+        <p className="text-gray-500 text-center py-6">No recent orders found.</p>
       ) : (
         <div className="space-y-4">
           {orders.map((order) => {
             const isOpen = expanded[order._id] || false;
             const totalPrice = order.products.reduce(
-              (sum, item) =>
-                sum +
-                (Number(item.price) || 0) * (Number(item.quantity) || 0),
+              (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
               0
             );
 
@@ -108,18 +138,16 @@ export function RecentOrders() {
                 key={order._id}
                 className="border rounded-xl p-4 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 hover:brightness-105 transition-all duration-200"
               >
+                {/* Header */}
                 <div
-                  className="flex justify-between items-center cursor-pointer"
+                  className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 cursor-pointer"
                   onClick={() =>
-                    setExpanded((prev) => ({
-                      ...prev,
-                      [order._id]: !prev[order._id],
-                    }))
+                    setExpanded((prev) => ({ ...prev, [order._id]: !prev[order._id] }))
                   }
                 >
-                  <div>
+                  <div className="flex-1">
                     <p className="text-xs text-gray-600">Order ID</p>
-                    <p className="font-semibold text-primary truncate max-w-[240px]">
+                    <p className="font-semibold text-primary break-all sm:truncate sm:max-w-[240px]">
                       {order._id}
                     </p>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -127,38 +155,29 @@ export function RecentOrders() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <span
-                          className={`px-4 py-1 rounded-full text-xs font-medium
-                          ${order.deliveryStatus === "Processing" ? "bg-white text-yellow-500" : ""}
-                          ${order.deliveryStatus === "Shipping" ? "bg-white text-blue-500" : ""}
-                          ${order.deliveryStatus === "Delivered" ? "bg-white text-green" : ""}
-                        `}
-                        >
-                          {order.deliveryStatus}
-                        </span>
-                    {/* Dropdown Icon */}
+                  <div className="flex items-center justify-between sm:justify-end gap-3">
+                    {getStatusBadge(order.deliveryStatus)}
                     <div className="text-gray-600 dark:text-gray-300">
-                      {isOpen ? (
-                        <ChevronUp size={20} />
-                      ) : (
-                        <ChevronDown size={20} />
-                      )}
+                      {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                     </div>
                   </div>
                 </div>
 
-                {isOpen && (
-                  <div className="mt-4 space-y-3 text-sm">
+                {/* Animated Details */}
+                <div
+                  className={`transition-all duration-300 overflow-hidden ${
+                    isOpen ? "max-h-[1000px] mt-4 opacity-100" : "max-h-0 opacity-0"
+                  }`}
+                >
+                  <div className="space-y-3 text-sm">
                     <p>
                       <strong>Email:</strong> {order.email}
                     </p>
                     <p>
-                      <strong>Address:</strong>{" "}
-                      {formatAddress(order.address)}
+                      <strong>Address:</strong> {formatAddress(order.address)}
                     </p>
 
-                    <div className="grid gap-3 sm:grid-cols-2 mt-2">
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 mt-2">
                       {order.products.map((item, idx) => (
                         <div
                           key={item._id || item.id || idx}
@@ -167,7 +186,7 @@ export function RecentOrders() {
                           <img
                             src={item.image}
                             alt={item.name}
-                            className="w-12 h-12 object-cover rounded border"
+                            className="w-12 h-12 object-cover rounded border flex-shrink-0"
                           />
                           <div className="text-sm">
                             <p className="font-medium">{item.name}</p>
@@ -184,7 +203,7 @@ export function RecentOrders() {
                       Total: ₹{totalPrice.toLocaleString()}
                     </p>
                   </div>
-                )}
+                </div>
               </div>
             );
           })}
