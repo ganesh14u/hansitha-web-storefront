@@ -25,7 +25,7 @@ const Checkout: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [animateTruck, setAnimateTruck] = useState(false);
 
-  // Form state including address
+  // Form state
   const [formData, setFormData] = useState({
     email: "",
     firstName: "",
@@ -47,7 +47,7 @@ const Checkout: React.FC = () => {
     }));
   };
 
-  // Form validation
+  // Validate form fields
   const validateForm = () => {
     const requiredFields = [
       "email",
@@ -60,8 +60,9 @@ const Checkout: React.FC = () => {
       "postalCode",
       "country",
     ];
+
     for (const field of requiredFields) {
-      if (!formData[field as keyof typeof formData]) {
+      if (!formData[field as keyof typeof formData]?.trim()) {
         toast({
           title: "Error",
           description: `Please fill in the ${field
@@ -105,7 +106,7 @@ const Checkout: React.FC = () => {
 
   const { shipping, tax, total } = calculatePricing(subtotal);
 
-  // Handle complete order
+  // Handle checkout
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -127,8 +128,8 @@ const Checkout: React.FC = () => {
         country,
       } = formData;
 
-      // ✅ Only generate payment link
-      const res = await axios.post(`${API_URL}/api/payment/payment-link`, {
+      // Generate Razorpay payment link
+      const res = await axios.post(`${API_URL}/api/payment-link`, {
         totalAmount: total,
         cartItems,
         userName: `${firstName} ${lastName}`,
@@ -146,16 +147,16 @@ const Checkout: React.FC = () => {
 
       const link = res.data.paymentLink.short_url;
 
-      // Let truck animation play a little
+      // Play truck animation briefly
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // Redirect to Razorpay Payment Page
+      // Redirect to payment page
       window.location.href = link;
     } catch (err) {
-      console.error("Error:", err);
+      console.error("Error generating payment link:", err);
       toast({
         title: "Error",
-        description: "Failed to generate payment link",
+        description: "Failed to generate payment link. Please try again.",
         variant: "destructive",
       });
       setAnimateTruck(false);
@@ -169,10 +170,7 @@ const Checkout: React.FC = () => {
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
-          <form
-            onSubmit={handleSubmit}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-8"
-          >
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Contact + Shipping Forms */}
             <div className="space-y-6">
               <CheckoutSection
@@ -213,10 +211,7 @@ const Checkout: React.FC = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {cartItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center space-x-4"
-                      >
+                      <div key={item.id} className="flex items-center space-x-4">
                         <img
                           src={item.image}
                           alt={item.name}
@@ -224,18 +219,13 @@ const Checkout: React.FC = () => {
                         />
                         <div className="flex-1">
                           <h3 className="text-sm font-medium">{item.name}</h3>
-                          <p className="text-gray-600 text-sm">
-                            Qty: {item.quantity}
-                          </p>
+                          <p className="text-gray-600 text-sm">Qty: {item.quantity}</p>
                         </div>
                         <p className="font-medium">
                           ₹
-                          {(item.price * item.quantity).toLocaleString(
-                            "en-IN",
-                            {
-                              minimumFractionDigits: 2,
-                            }
-                          )}
+                          {(item.price * item.quantity).toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                          })}
                         </p>
                       </div>
                     ))}
@@ -251,9 +241,7 @@ const Checkout: React.FC = () => {
                         <span>Total</span>
                         <span>
                           ₹
-                          {total.toLocaleString("en-IN", {
-                            minimumFractionDigits: 2,
-                          })}
+                          {total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                     </div>
@@ -264,23 +252,11 @@ const Checkout: React.FC = () => {
                         type="submit"
                         disabled={!isFormValid || isProcessing}
                         animate={animateTruck}
-                        onClick={(e) => {
-                          if (!isFormValid) {
-                            e.preventDefault();
-                            toast({
-                              title: "Error",
-                              description:
-                                "Please fill in all required fields to proceed with your order.",
-                              variant: "destructive",
-                            });
-                          }
-                        }}
                       />
                     </div>
 
                     <p className="text-sm text-center text-gray-600 flex items-center justify-center gap-1 mt-2">
-                      <Lock className="w-3 h-3" /> Your order details are safe
-                      and secure.
+                      <Lock className="w-3 h-3" /> Your order details are safe and secure.
                     </p>
                   </div>
                 </CardContent>
@@ -314,13 +290,7 @@ const InputGroup = ({
 }) => (
   <div>
     <Label htmlFor={id}>{label}</Label>
-    <Input
-      id={id}
-      name={id}
-      value={value}
-      onChange={onChange}
-      maxLength={maxLength}
-    />
+    <Input id={id} name={id} value={value} onChange={onChange} maxLength={maxLength} />
   </div>
 );
 
