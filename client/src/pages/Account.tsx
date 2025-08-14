@@ -9,7 +9,6 @@ import { SecuritySettings } from "@/components/SecuritySettings";
 import { Footer } from "@/components/Footer";
 
 export default function Account() {
-  const [activeSection, setActiveSection] = useState<string>("default");
   const { user, loading, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -29,10 +28,6 @@ export default function Account() {
 
   if (!user) return null;
 
-  const handleActionClick = (action: string) => {
-    setActiveSection(action);
-  };
-
   const handleLogout = () => {
     logout();
     navigate("/", { replace: true });
@@ -42,35 +37,10 @@ export default function Account() {
     navigate("/admin/profile");
   };
 
-  const BackButton = () => (
-    <div className="flex justify-start">
-      <button
-        onClick={() => setActiveSection("default")}
-        className="w-fit h-10 px-4 bg-gray-200 rounded hover:bg-gray-300 transition text-sm"
-      >
-        ← Back
-      </button>
-    </div>
-  );
-
-  const renderMainContent = () => {
-    switch (activeSection) {
-      case "orders":
-        return (
-          <div className="grid grid-cols-1 gap-6">
-            <BackButton />
-            <RecentOrders />
-          </div>
-        );
-      case "settings":
-        return (
-          <div className="grid grid-cols-1 gap-6">
-            <BackButton />
-            <SecuritySettings />
-          </div>
-        );
-      default:
-        return (
+  return (
+    <Layout>
+      <div className="min-h-screen bg-gradient-to-br from-blue-400 to-pink-400">
+        <main className="container mx-auto px-4 py-6 space-y-6 pb-20 md:pb-6">
           <div className="grid grid-cols-1 gap-6">
             <ProfileHeader user={user} onLogout={handleLogout} />
             {(user.role === "admin" || user.role === "superadmin") && (
@@ -83,17 +53,8 @@ export default function Account() {
                 </button>
               </div>
             )}
-            <QuickActions onActionClick={handleActionClick} userName={user.name} />
+            <QuickActions onActionClick={() => {}} userName={user.name} />
           </div>
-        );
-    }
-  };
-
-  return (
-    <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-400 to-pink-400">
-        <main className="container mx-auto px-4 py-6 space-y-6 pb-20 md:pb-6">
-          {renderMainContent()}
         </main>
         <Footer />
       </div>

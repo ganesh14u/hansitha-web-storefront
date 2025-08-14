@@ -25,6 +25,11 @@ const orderSchema = new mongoose.Schema({
     enum: ["pending", "paid", "failed"],
     default: "pending",
   },
+  status: {
+    type: String,
+    enum: ["Processing", "Shipping", "Delivered"],
+    default: "Processing",
+  },
   products: [
     {
       id: { type: String, required: true },

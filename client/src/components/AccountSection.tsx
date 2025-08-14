@@ -10,7 +10,7 @@ interface AccountSectionProps {
 
 export function AccountSection({ title, icon, children, className }: AccountSectionProps) {
   return (
-    <Card className={`shadow-card hover:shadow-soft transition-all duration-300 ${className}`}>
+    <Card className={`shadow-card mx-10 mt-10 hover:shadow-soft transition-all duration-300 ${className}`}>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2 text-lg">
           {icon}

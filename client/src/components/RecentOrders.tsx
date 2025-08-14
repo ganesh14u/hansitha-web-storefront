@@ -17,7 +17,7 @@ interface ProductItem {
 interface Order {
   _id: string;
   email: string;
-  address: string;
+  address: string | Record<string, unknown>; // More generic type
   products: ProductItem[];
   totalAmount: number;
   createdAt: string;
@@ -31,6 +31,18 @@ export function RecentOrders() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const API_URL = import.meta.env.VITE_API_URL;
 
+  // Safe formatter for address
+  const formatAddress = (address: string | Record<string, unknown> | undefined) => {
+    if (!address) return "N/A";
+    if (typeof address === "string") return address.trim() || "N/A";
+    if (typeof address === "object" && address !== null) {
+      return Object.values(address)
+        .filter((val) => typeof val === "string" && val.trim().length > 0)
+        .join(", ") || "N/A";
+    }
+    return "N/A";
+  };
+
   useEffect(() => {
     if (!user?.email) {
       setOrders([]);
@@ -43,19 +55,13 @@ export function RecentOrders() {
         const res = await axios.get(`${API_URL}/api/orders`, {
           withCredentials: true,
         });
-        console.log("Raw response data:", res.data);
 
-        // Since your backend returns the array directly:
-        const ordersData = Array.isArray(res.data) ? res.data : [];
-        if (ordersData.length === 0) {
-          setOrders([]);
-          return;
-        }
+        const ordersData: Order[] = Array.isArray(res.data) ? res.data : [];
 
         const filteredSortedOrders = ordersData
-          .filter((order: Order) => order.email === user.email)
+          .filter((order) => order.email === user.email)
           .sort(
-            (a: Order, b: Order) =>
+            (a, b) =>
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           );
 
@@ -124,7 +130,7 @@ export function RecentOrders() {
                       <strong>Email:</strong> {order.email}
                     </p>
                     <p>
-                      <strong>Address:</strong> {order.address}
+                      <strong>Address:</strong> {formatAddress(order.address)}
                     </p>
 
                     <div className="grid gap-3 sm:grid-cols-2 mt-2">

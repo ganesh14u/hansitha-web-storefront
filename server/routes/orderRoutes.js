@@ -45,7 +45,8 @@ router.post("/webhook", express.json({ type: "*/*" }), async (req, res) => {
       const phone = notes.phone || "";
       const address = notes.address ? JSON.parse(notes.address) : {};
       const products = notes.cartItems ? JSON.parse(notes.cartItems) : [];
-      const totalAmount = Number(notes.totalAmount) || paymentEntity.amount / 100;
+      const totalAmount =
+        Number(notes.totalAmount) || paymentEntity.amount / 100;
 
       // Step 1: Update stock for each product
       const updatedStocks = [];
@@ -94,12 +95,40 @@ router.post("/webhook", express.json({ type: "*/*" }), async (req, res) => {
       }
 
       console.log("✅ Order created after payment:", savedOrder._id);
-      return res.status(200).json({ success: true, updatedStock: updatedStocks });
+      return res
+        .status(200)
+        .json({ success: true, updatedStock: updatedStocks });
     } catch (error) {
       console.error("Error creating order from webhook:", error);
       return res.status(500).json({ message: "Server error" });
     }
   }
+
+  // Update delivery status
+  router.put("/:id/status", async (req, res) => {
+    try {
+      const { status } = req.body;
+
+      if (!["Processing", "Shipping", "Delivered"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status value" });
+      }
+
+      const updatedOrder = await Order.findByIdAndUpdate(
+        req.params.id,
+        { status },
+        { new: true }
+      );
+
+      if (!updatedOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      res.json(updatedOrder);
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
 
   // For other events, just acknowledge
   res.status(200).json({ message: "Webhook received but no order created" });

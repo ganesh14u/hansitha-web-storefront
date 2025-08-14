@@ -47,6 +47,8 @@ import Checkout from "./pages/Checkout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Account from "./pages/Account";
+import { RecentOrders }from "@/components/RecentOrders";
+import { SecuritySettings } from "@/components/SecuritySettings";
 import Orders from "./pages/Orders";
 import Addresses from "./pages/Addresses";
 import WishlistPage from "./pages/WishlistPage";
@@ -225,6 +227,8 @@ const AppRoutes = () => {
             <Account />
         }
       />
+      <Route path="/account/recent-orders" element={<Layout><RecentOrders /></Layout>} />
+      <Route path="/account/account-section" element={<Layout><SecuritySettings /></Layout>} />
       <Route
         path="/orders"
         element={

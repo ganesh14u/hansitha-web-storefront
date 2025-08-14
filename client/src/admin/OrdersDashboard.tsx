@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 interface ProductItem {
-  _id?: string; // some may not have _id in products array
+  _id?: string;
   id?: string;
   name: string;
   price: number;
@@ -21,13 +21,23 @@ interface ProductItem {
   quantity: number;
 }
 
+interface Address {
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+}
+
 interface Order {
   _id: string;
   email: string;
-  address: string;
-  products: ProductItem[]; // ✅ match backend key
+  address: string | Address;
+  products: ProductItem[];
   totalAmount: number;
   createdAt: string;
+  status?: string; // ✅ added
 }
 
 const OrdersList = () => {
@@ -44,13 +54,19 @@ const OrdersList = () => {
   const perPage = 5;
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // ✅ Fetch orders initially
+  const formatAddress = (addr: string | Address) => {
+    if (!addr) return "No address provided";
+    if (typeof addr === "string") return addr;
+    return `${addr.address1 || ""}${addr.address2 ? ", " + addr.address2 : ""}, ${
+      addr.city || ""
+    }, ${addr.state || ""} - ${addr.postalCode || ""}, ${addr.country || ""}`;
+  };
+
   const fetchOrders = async () => {
     try {
       const response = await axios.get(`${API_URL}/api/orders`, {
         withCredentials: true,
       });
-
       const data: Order[] = response.data;
       setOrders(data);
       setFiltered(data);
@@ -60,7 +76,7 @@ const OrdersList = () => {
       setLoading(false);
     }
   };
-  // ✅ Filter orders based on criteria
+
   const filterOrders = () => {
     let filteredData = [...orders];
 
@@ -95,7 +111,26 @@ const OrdersList = () => {
 
   const handleNewOrder = (newOrder: Order) => {
     toast.success("🛒 New order received!");
-    fetchOrders(); // re-fetch orders from backend to get latest data
+    fetchOrders();
+  };
+
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      await axios.put(
+        `${API_URL}/api/orders/${orderId}/status`,
+        { status: newStatus },
+        { withCredentials: true }
+      );
+      toast.success(`Status updated to "${newStatus}"`);
+      setOrders((prev) =>
+        prev.map((o) =>
+          o._id === orderId ? { ...o, status: newStatus } : o
+        )
+      );
+    } catch (error) {
+      toast.error("Failed to update status");
+      console.error(error);
+    }
   };
 
   const totalPages = Math.ceil(filtered.length / perPage);
@@ -109,43 +144,17 @@ const OrdersList = () => {
     }
   };
 
-  // ✅ Initial fetch + Socket.IO setup
-useEffect(() => {
-  const fetchOrders = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/api/orders`, {
-        withCredentials: true,
-      });
-      const data: Order[] = response.data;
-      setOrders(data);
-      setFiltered(data);
-      setLoading(false);
-    } catch (error) {
-      console.error("Failed to fetch orders", error);
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetchOrders();
+    const socket = io(API_URL, { withCredentials: true });
+    socket.on("newOrder", handleNewOrder);
+    window.addEventListener("keydown", handleArrowNavigation);
+    return () => {
+      socket.disconnect();
+      window.removeEventListener("keydown", handleArrowNavigation);
+    };
+  }, []);
 
-  fetchOrders();
-
-  const handleNewOrder = (newOrder: Order) => {
-    toast.success("🛒 New order received!");
-    fetchOrders(); // re-fetch all orders on new order
-  };
-
-  const socket = io(API_URL, { withCredentials: true });
-  socket.on("newOrder", handleNewOrder);
-
-  window.addEventListener("keydown", handleArrowNavigation);
-
-  return () => {
-    socket.disconnect();
-    window.removeEventListener("keydown", handleArrowNavigation);
-  };
-}, []);
-
-
-  // ✅ Re-run filters when criteria or orders change
   useEffect(() => {
     filterOrders();
   }, [fromDate, toDate, searchQuery, orders]);
@@ -164,13 +173,12 @@ useEffect(() => {
 
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-md p-4 sm:p-6">
-      {/* 🔊 Order Notification Listener */}
       <OrderNotificationSound apiUrl={API_URL} onNewOrder={handleNewOrder} />
       <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4">
         🛒 Orders Overview
       </h2>
 
-      {/* Stats Overview */}
+      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <div className="bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 p-3 sm:p-4 rounded-lg shadow">
           <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
@@ -198,7 +206,6 @@ useEffect(() => {
           onChange={(e) => setFromDate(e.target.value)}
           className="px-3 py-2 border rounded-md text-sm w-full dark:bg-neutral-800"
         />
-
         <input
           type="date"
           value={toDate}
@@ -217,7 +224,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Orders */}
       {loading ? (
         <div className="flex items-center justify-center text-primary animate-pulse py-10">
           <Loader className="animate-spin w-6 h-6 mr-2" />
@@ -232,36 +238,55 @@ useEffect(() => {
           <div className="space-y-4">
             {paginatedOrders.map((order) => {
               const isOpen = expanded[order._id] || false;
-
               return (
                 <div
                   key={order._id}
                   className="border rounded-xl p-4 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 hover:brightness-105 transition-all duration-200"
                 >
-                  <div
-                    className="flex justify-between items-center cursor-pointer"
-                    onClick={() =>
-                      setExpanded((prev) => ({
-                        ...prev,
-                        [order._id]: !prev[order._id],
-                      }))
-                    }
-                  >
-                    <div>
-                      <p className="text-xs text-gray-600">Order ID</p>
-                      <p className="font-semibold text-primary truncate max-w-[240px]">
-                        {order._id}
-                      </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {new Date(order.createdAt).toLocaleString()}
-                      </p>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      {/* ✅ Delivery Status Dropdown */}
+                      <select
+                        value={order.status || "Processing"}
+                        onChange={(e) =>
+                          updateOrderStatus(order._id, e.target.value)
+                        }
+                        className="px-2 py-1 text-sm border rounded-md dark:bg-neutral-800"
+                      >
+                        <option value="Processing">Processing</option>
+                        <option value="Shipping">Shipping</option>
+                        <option value="Delivered">Delivered</option>
+                      </select>
+
+                      {/* Order ID + date */}
+                      <div
+                        className="cursor-pointer"
+                        onClick={() =>
+                          setExpanded((prev) => ({
+                            ...prev,
+                            [order._id]: !prev[order._id],
+                          }))
+                        }
+                      >
+                        <p className="text-xs text-gray-600">Order ID</p>
+                        <p className="font-semibold text-primary truncate max-w-[240px]">
+                          {order._id}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          {new Date(order.createdAt).toLocaleString()}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-gray-600 dark:text-gray-300">
-                      {isOpen ? (
-                        <ChevronUp size={20} />
-                      ) : (
-                        <ChevronDown size={20} />
-                      )}
+
+                    <div className="text-gray-600 dark:text-gray-300 cursor-pointer"
+                      onClick={() =>
+                        setExpanded((prev) => ({
+                          ...prev,
+                          [order._id]: !prev[order._id],
+                        }))
+                      }
+                    >
+                      {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                     </div>
                   </div>
 
@@ -271,7 +296,7 @@ useEffect(() => {
                         <strong>Email:</strong> {order.email}
                       </p>
                       <p>
-                        <strong>Address:</strong> {order.address}
+                        <strong>Address:</strong> {formatAddress(order.address)}
                       </p>
 
                       <div className="grid gap-3 sm:grid-cols-2 mt-2">
