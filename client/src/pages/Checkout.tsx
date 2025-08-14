@@ -114,16 +114,34 @@ const Checkout: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      const { email, firstName, lastName, phone, address1, address2, city, state, postalCode, country } = formData;
+      const {
+        email,
+        firstName,
+        lastName,
+        phone,
+        address1,
+        address2,
+        city,
+        state,
+        postalCode,
+        country,
+      } = formData;
 
-      // 1️⃣ Only generate payment link, DO NOT save order in DB yet
+      // ✅ Only generate payment link
       const res = await axios.post(`${API_URL}/api/payment/payment-link`, {
         totalAmount: total,
         cartItems,
         userName: `${firstName} ${lastName}`,
         userEmail: email,
         userPhone: phone,
-        shippingAddress: { address1, address2, city, state, postalCode, country },
+        shippingAddress: {
+          address1,
+          address2,
+          city,
+          state,
+          postalCode,
+          country,
+        },
       });
 
       const link = res.data.paymentLink.short_url;
@@ -131,7 +149,7 @@ const Checkout: React.FC = () => {
       // Let truck animation play a little
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // Redirect user to Razorpay Payment Page
+      // Redirect to Razorpay Payment Page
       window.location.href = link;
     } catch (err) {
       console.error("Error:", err);
@@ -195,7 +213,10 @@ const Checkout: React.FC = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {cartItems.map((item) => (
-                      <div key={item.id} className="flex items-center space-x-4">
+                      <div
+                        key={item.id}
+                        className="flex items-center space-x-4"
+                      >
                         <img
                           src={item.image}
                           alt={item.name}
@@ -203,13 +224,18 @@ const Checkout: React.FC = () => {
                         />
                         <div className="flex-1">
                           <h3 className="text-sm font-medium">{item.name}</h3>
-                          <p className="text-gray-600 text-sm">Qty: {item.quantity}</p>
+                          <p className="text-gray-600 text-sm">
+                            Qty: {item.quantity}
+                          </p>
                         </div>
                         <p className="font-medium">
                           ₹
-                          {(item.price * item.quantity).toLocaleString("en-IN", {
-                            minimumFractionDigits: 2,
-                          })}
+                          {(item.price * item.quantity).toLocaleString(
+                            "en-IN",
+                            {
+                              minimumFractionDigits: 2,
+                            }
+                          )}
                         </p>
                       </div>
                     ))}
@@ -253,7 +279,8 @@ const Checkout: React.FC = () => {
                     </div>
 
                     <p className="text-sm text-center text-gray-600 flex items-center justify-center gap-1 mt-2">
-                      <Lock className="w-3 h-3" /> Your order details are safe and secure.
+                      <Lock className="w-3 h-3" /> Your order details are safe
+                      and secure.
                     </p>
                   </div>
                 </CardContent>
@@ -287,7 +314,13 @@ const InputGroup = ({
 }) => (
   <div>
     <Label htmlFor={id}>{label}</Label>
-    <Input id={id} name={id} value={value} onChange={onChange} maxLength={maxLength} />
+    <Input
+      id={id}
+      name={id}
+      value={value}
+      onChange={onChange}
+      maxLength={maxLength}
+    />
   </div>
 );
 

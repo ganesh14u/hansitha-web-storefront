@@ -1,64 +1,40 @@
 const express = require("express");
 const router = express.Router();
-const Razorpay = require("razorpay");
 const Order = require("../models/Order");
-require("dotenv").config();
+const crypto = require("crypto");
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+router.post("/razorpay-webhook", express.json({ type: "application/json" }), async (req, res) => {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-// POST /api/payment/payment-link
-router.post("/payment-link", async (req, res) => {
-  const { totalAmount, cartItems, userName, userEmail, userPhone, shippingAddress } = req.body;
+  const shasum = crypto.createHmac("sha256", secret);
+  shasum.update(JSON.stringify(req.body));
+  const digest = shasum.digest("hex");
 
-  try {
-    // Save order with status "pending" and full info
+  if (digest !== req.headers["x-razorpay-signature"]) {
+    return res.status(400).send("Invalid signature");
+  }
+
+  const event = req.body.event;
+
+  if (event === "payment_link.paid") {
+    const paymentData = req.body.payload.payment_link.entity;
+
+    // Save order after payment success
     const order = new Order({
-      name: userName,
-      email: userEmail,
-      phone: userPhone,
-      amount: totalAmount,
-      products: cartItems,
-      address: shippingAddress,  // <-- store address as object here
-      status: "pending",
+      name: paymentData.notes.name,
+      email: paymentData.notes.email,
+      phone: paymentData.notes.phone,
+      products: JSON.parse(paymentData.notes.cartItems),
+      address: JSON.parse(paymentData.notes.address),
+      amount: parseFloat(paymentData.notes.totalAmount),
+      status: "Paid",
+      razorpay_payment_link_id: paymentData.id,
     });
 
     await order.save();
-
-    // Create Razorpay payment link, add all data into notes (strings where needed)
-    const paymentLink = await razorpay.paymentLink.create({
-      amount: Math.round(totalAmount * 100), // paise
-      currency: "INR",
-      reference_id: order._id.toString(),
-      description: `Payment for Order ${order._id}`,
-      customer: {
-        name: userName,
-        email: userEmail,
-        contact: userPhone,
-      },
-      notify: {
-        sms: true,
-        email: true,
-      },
-      notes: {
-        name: userName,
-        email: userEmail,
-        phone: userPhone,
-        address: JSON.stringify(shippingAddress),   // stringify address object
-        cartItems: JSON.stringify(cartItems),       // stringify products array
-        totalAmount: totalAmount.toString(),
-      },
-      callback_url: `${process.env.BASE_URL}/order-confirmation`,
-      callback_method: "get",
-    });
-
-    res.json({ paymentLink }); // send full paymentLink object
-  } catch (err) {
-    console.error("Payment link error:", err);
-    res.status(500).json({ message: "Something went wrong" });
   }
+
+  res.status(200).send("OK");
 });
 
 module.exports = router;
