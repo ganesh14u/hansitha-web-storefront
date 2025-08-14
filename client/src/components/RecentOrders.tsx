@@ -37,6 +37,9 @@ export function RecentOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [refreshingOrder, setRefreshingOrder] = useState<
+    Record<string, boolean>
+  >({});
   const API_URL = import.meta.env.VITE_API_URL;
 
   const formatAddress = (
@@ -45,9 +48,11 @@ export function RecentOrders() {
     if (!address) return "N/A";
     if (typeof address === "string") return address.trim() || "N/A";
     if (typeof address === "object" && address !== null) {
-      return Object.values(address)
-        .filter((val) => typeof val === "string" && val.trim().length > 0)
-        .join(", ") || "N/A";
+      return (
+        Object.values(address)
+          .filter((val) => typeof val === "string" && val.trim().length > 0)
+          .join(", ") || "N/A"
+      );
     }
     return "N/A";
   };
@@ -71,8 +76,7 @@ export function RecentOrders() {
           .filter((order) => order.email === user.email)
           .sort(
             (a, b) =>
-              new Date(b.createdAt).getTime() -
-              new Date(a.createdAt).getTime()
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           );
 
         setOrders(filteredSortedOrders.slice(0, 20));
@@ -87,7 +91,38 @@ export function RecentOrders() {
     fetchOrders();
   }, [user?.email]);
 
-  const getStatusBadge = (status?: string) => {
+  const refreshOrderStatus = async (orderId: string) => {
+    try {
+      setRefreshingOrder((prev) => ({ ...prev, [orderId]: true }));
+      const res = await axios.get(`${API_URL}/api/orders`, {
+        withCredentials: true,
+      });
+      const allOrders: Order[] = Array.isArray(res.data) ? res.data : [];
+
+      setOrders((prevOrders) =>
+        prevOrders.map((order) => {
+          const updatedOrder = allOrders.find((o) => o._id === order._id);
+          return updatedOrder
+            ? { ...order, deliveryStatus: updatedOrder.deliveryStatus }
+            : order;
+        })
+      );
+    } catch (err) {
+      console.error("Failed to refresh order status", err);
+    } finally {
+      setRefreshingOrder((prev) => ({ ...prev, [orderId]: false }));
+    }
+  };
+
+  const getStatusBadge = (status?: string, isLoading?: boolean) => {
+    if (isLoading) {
+      return (
+        <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-500">
+          <Loader className="animate-spin w-4 h-4" /> Updating...
+        </span>
+      );
+    }
+
     switch (status) {
       case "Processing":
         return (
@@ -103,7 +138,7 @@ export function RecentOrders() {
         );
       case "Delivered":
         return (
-          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white text-green">
+          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white text-green-600">
             <CheckCircle size={14} /> Delivered
           </span>
         );
@@ -133,10 +168,10 @@ export function RecentOrders() {
             const isOpen = expanded[order._id] || false;
             const totalPrice = order.products.reduce(
               (sum, item) =>
-                sum +
-                (Number(item.price) || 0) * (Number(item.quantity) || 0),
+                sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
               0
             );
+            const isRefreshing = refreshingOrder[order._id] || false;
 
             return (
               <div
@@ -164,9 +199,25 @@ export function RecentOrders() {
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end gap-3">
-                    {getStatusBadge(order.deliveryStatus)}
+                    {getStatusBadge(order.deliveryStatus, isRefreshing)}
+                    {/* Refresh Button */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="ml-2 px-2 py-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        refreshOrderStatus(order._id);
+                      }}
+                    >
+                      ⟳
+                    </Button>
                     <div className="text-gray-600 dark:text-gray-300">
-                      {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                      {isOpen ? (
+                        <ChevronUp size={20} />
+                      ) : (
+                        <ChevronDown size={20} />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -174,7 +225,9 @@ export function RecentOrders() {
                 {/* Animated Details */}
                 <div
                   className={`transition-all duration-300 overflow-hidden ${
-                    isOpen ? "max-h-[1000px] mt-4 opacity-100" : "max-h-0 opacity-0"
+                    isOpen
+                      ? "max-h-[1000px] mt-4 opacity-100"
+                      : "max-h-0 opacity-0"
                   }`}
                 >
                   <div className="space-y-3 text-sm">
