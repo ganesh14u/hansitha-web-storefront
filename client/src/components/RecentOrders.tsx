@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { io, Socket } from "socket.io-client";
-import { ChevronDown, ChevronUp, Loader, Package, Truck, CheckCircle } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Loader,
+  Package,
+  Truck,
+  CheckCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AccountSection } from "./AccountSection";
 import { useAuth } from "@/context/AuthContext";
@@ -26,16 +32,16 @@ interface Order {
   deliveryStatus?: string;
 }
 
-const API_URL = import.meta.env.VITE_API_URL;
-
 export function RecentOrders() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const API_URL = import.meta.env.VITE_API_URL;
 
-  const formatAddress = (address: string | Record<string, unknown> | undefined) => {
+  const formatAddress = (
+    address: string | Record<string, unknown> | undefined
+  ) => {
     if (!address) return "N/A";
     if (typeof address === "string") return address.trim() || "N/A";
     if (typeof address === "object" && address !== null) {
@@ -46,26 +52,41 @@ export function RecentOrders() {
     return "N/A";
   };
 
-  // Fetch orders
-  const fetchOrders = async () => {
-    if (!user?.email) return;
-    try {
-      setLoading(true);
-      const res = await axios.get(`${API_URL}/api/orders`, { withCredentials: true });
-      const ordersData: Order[] = Array.isArray(res.data) ? res.data : [];
-      const filteredSortedOrders = ordersData
-        .filter((order) => order.email === user.email)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setOrders(filteredSortedOrders.slice(0, 20));
-    } catch (err) {
-      console.error("Failed to fetch recent orders", err);
+  useEffect(() => {
+    if (!user?.email) {
       setOrders([]);
-    } finally {
       setLoading(false);
+      return;
     }
-  };
 
-  // Get status badge with icon
+    const fetchOrders = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/orders`, {
+          withCredentials: true,
+        });
+
+        const ordersData: Order[] = Array.isArray(res.data) ? res.data : [];
+
+        const filteredSortedOrders = ordersData
+          .filter((order) => order.email === user.email)
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() -
+              new Date(a.createdAt).getTime()
+          );
+
+        setOrders(filteredSortedOrders.slice(0, 20));
+      } catch (err) {
+        console.error("Failed to fetch recent orders", err);
+        setOrders([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [user?.email]);
+
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case "Processing":
@@ -82,7 +103,7 @@ export function RecentOrders() {
         );
       case "Delivered":
         return (
-          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white text-green-600">
+          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white text-green">
             <CheckCircle size={14} /> Delivered
           </span>
         );
@@ -95,26 +116,6 @@ export function RecentOrders() {
     }
   };
 
-  useEffect(() => {
-    fetchOrders();
-
-    // Setup Socket.IO for real-time updates
-    const newSocket = io(API_URL);
-    setSocket(newSocket);
-
-    newSocket.on("orderStatusUpdated", (updatedOrder: Order) => {
-      setOrders((prev) =>
-        prev.map((order) =>
-          order._id === updatedOrder._id ? { ...order, deliveryStatus: updatedOrder.deliveryStatus } : order
-        )
-      );
-    });
-
-    return () => {
-      newSocket.disconnect();
-    };
-  }, [user?.email]);
-
   return (
     <AccountSection title="Recent Orders">
       {loading ? (
@@ -123,13 +124,17 @@ export function RecentOrders() {
           Loading recent orders...
         </div>
       ) : orders.length === 0 ? (
-        <p className="text-gray-500 text-center py-6">No recent orders found.</p>
+        <p className="text-gray-500 text-center py-6">
+          No recent orders found.
+        </p>
       ) : (
         <div className="space-y-4">
           {orders.map((order) => {
             const isOpen = expanded[order._id] || false;
             const totalPrice = order.products.reduce(
-              (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
+              (sum, item) =>
+                sum +
+                (Number(item.price) || 0) * (Number(item.quantity) || 0),
               0
             );
 
@@ -142,7 +147,10 @@ export function RecentOrders() {
                 <div
                   className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 cursor-pointer"
                   onClick={() =>
-                    setExpanded((prev) => ({ ...prev, [order._id]: !prev[order._id] }))
+                    setExpanded((prev) => ({
+                      ...prev,
+                      [order._id]: !prev[order._id],
+                    }))
                   }
                 >
                   <div className="flex-1">
