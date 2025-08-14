@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Loader,
   Search,
+  RefreshCcw,
 } from "lucide-react";
 
 interface ProductItem {
@@ -33,12 +34,10 @@ interface Address {
 
 interface Order {
   _id: string;
-  name?: string;
   email: string;
   address?: string | Address;
   products: ProductItem[];
-  amount?: number;
-  totalAmount?: number; // for compatibility if backend returns amount
+  totalAmount?: number;
   createdAt: string;
   paymentStatus?: "pending" | "paid" | "failed";
   deliveryStatus?: "Processing" | "Shipping" | "Delivered";
@@ -54,6 +53,7 @@ const OrdersList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [page, setPage] = useState(1);
+  const [statusLoading, setStatusLoading] = useState<Record<string, boolean>>({});
 
   const perPage = 5;
   const API_URL = import.meta.env.VITE_API_URL;
@@ -120,21 +120,13 @@ const OrdersList = () => {
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    setStatusLoading((prev) => ({ ...prev, [orderId]: true }));
     try {
-      // Optimistic UI (optional)
-      setOrders((prev) =>
-        prev.map((o) =>
-          o._id === orderId ? { ...o, deliveryStatus: newStatus as Order["deliveryStatus"] } : o
-        )
-      );
-
       const { data } = await axios.put(
         `${API_URL}/api/orders/${orderId}/status`,
         { status: newStatus },
         { withCredentials: true }
       );
-
-      // Ensure local state mirrors server
       setOrders((prev) =>
         prev.map((o) => (o._id === orderId ? { ...o, deliveryStatus: data.deliveryStatus } : o))
       );
@@ -142,8 +134,26 @@ const OrdersList = () => {
     } catch (error) {
       toast.error("Failed to update status");
       console.error(error);
-      // Re-fetch to restore server truth if optimistic update failed
-      fetchOrders();
+    } finally {
+      setStatusLoading((prev) => ({ ...prev, [orderId]: false }));
+    }
+  };
+
+  const refreshOrderStatus = async (orderId: string) => {
+    setStatusLoading((prev) => ({ ...prev, [orderId]: true }));
+    try {
+      const { data } = await axios.get(`${API_URL}/api/orders/${orderId}`, {
+        withCredentials: true,
+      });
+      setOrders((prev) =>
+        prev.map((o) => (o._id === orderId ? { ...o, deliveryStatus: data.deliveryStatus } : o))
+      );
+      toast.success("Status refreshed!");
+    } catch (error) {
+      toast.error("Failed to refresh status");
+      console.error(error);
+    } finally {
+      setStatusLoading((prev) => ({ ...prev, [orderId]: false }));
     }
   };
 
@@ -151,28 +161,27 @@ const OrdersList = () => {
   const paginatedOrders = filtered.slice((page - 1) * perPage, page * perPage);
 
   const handleArrowNavigation = (e: KeyboardEvent) => {
-    if (e.key === "ArrowRight" && page < totalPages) {
-      setPage((p) => p + 1);
-    } else if (e.key === "ArrowLeft" && page > 1) {
-      setPage((p) => p - 1);
-    }
+    if (e.key === "ArrowRight" && page < totalPages) setPage((p) => p + 1);
+    if (e.key === "ArrowLeft" && page > 1) setPage((p) => p - 1);
   };
 
   useEffect(() => {
     fetchOrders();
     const socket = io(API_URL, { withCredentials: true });
     socket.on("newOrder", handleNewOrder);
-    socket.on("orderStatusUpdated", (payload: { _id: string; deliveryStatus: Order["deliveryStatus"] }) => {
-      setOrders((prev) =>
-        prev.map((o) => (o._id === payload._id ? { ...o, deliveryStatus: payload.deliveryStatus } : o))
-      );
-    });
+    socket.on(
+      "orderStatusUpdated",
+      (payload: { _id: string; deliveryStatus: Order["deliveryStatus"] }) => {
+        setOrders((prev) =>
+          prev.map((o) => (o._id === payload._id ? { ...o, deliveryStatus: payload.deliveryStatus } : o))
+        );
+      }
+    );
     window.addEventListener("keydown", handleArrowNavigation);
     return () => {
       socket.disconnect();
       window.removeEventListener("keydown", handleArrowNavigation);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -182,29 +191,36 @@ const OrdersList = () => {
   useEffect(() => {
     const revenue = filtered.reduce((sum, order) => {
       const itemsTotal = (order.products || []).reduce((total, item) => {
-        const price = Number(item.price) || 0;
-        const qty = Number(item.quantity) || 0;
-        return total + qty * price;
+        return total + (Number(item.price) || 0) * (Number(item.quantity) || 0);
       }, 0);
       return sum + itemsTotal;
     }, 0);
     setTotalRevenue(revenue);
   }, [filtered]);
 
+  const getBadgeColor = (status: string) => {
+    switch (status) {
+      case "Processing":
+        return "bg-white text-yellow-500";
+      case "Shipping":
+        return "bg-white text-blue-500";
+      case "Delivered":
+        return "bg-white text-green";
+      default:
+        return "bg-gray-200 text-gray-500";
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-md p-4 sm:p-6">
       <OrderNotificationSound apiUrl={API_URL} onNewOrder={handleNewOrder} />
-      <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4">
-        🛒 Orders Overview
-      </h2>
+      <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4">🛒 Orders Overview</h2>
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <div className="bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 p-3 sm:p-4 rounded-lg shadow">
           <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Total Revenue</p>
-          <p className="text-lg sm:text-xl font-bold text-black dark:text-white">
-            ₹{totalRevenue.toLocaleString()}
-          </p>
+          <p className="text-lg sm:text-xl font-bold text-black dark:text-white">₹{totalRevenue.toLocaleString()}</p>
         </div>
         <div className="bg-gradient-to-r from-pink-100 to-pink-200 dark:from-neutral-800 dark:to-neutral-700 p-3 sm:p-4 rounded-lg shadow">
           <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Total Orders</p>
@@ -240,8 +256,7 @@ const OrdersList = () => {
 
       {loading ? (
         <div className="flex items-center justify-center text-primary animate-pulse py-10">
-          <Loader className="animate-spin w-6 h-6 mr-2" />
-          Loading orders...
+          <Loader className="animate-spin w-6 h-6 mr-2" /> Loading orders...
         </div>
       ) : filtered.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400 text-center py-10">No orders found.</p>
@@ -256,17 +271,11 @@ const OrdersList = () => {
                   key={order._id}
                   className="border rounded-xl p-4 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 hover:brightness-105 transition-all duration-200"
                 >
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      {/* ✅ Delivery Status Badge + Dropdown */}
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium
-                          ${status === "Processing" ? "bg-white text-yellow-500" : ""}
-                          ${status === "Shipping" ? "bg-white text-blue-500" : ""}
-                          ${status === "Delivered" ? "bg-white text-green" : ""}
-                        `}
-                        >
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Delivery Status Badge + Dropdown + Refresh */}
+                      <div className="flex items-center gap-1">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getBadgeColor(status)}`}>
                           {status}
                         </span>
                         <select
@@ -278,6 +287,16 @@ const OrdersList = () => {
                           <option value="Shipping">Shipping</option>
                           <option value="Delivered">Delivered</option>
                         </select>
+                        <button
+                          onClick={() => refreshOrderStatus(order._id)}
+                          className="p-1 rounded hover:bg-gray-200 dark:hover:bg-neutral-700"
+                        >
+                          {statusLoading[order._id] ? (
+                            <Loader className="w-4 h-4 animate-spin text-gray-600" />
+                          ) : (
+                            <RefreshCcw className="w-4 h-4 text-gray-600" />
+                          )}
+                        </button>
                       </div>
 
                       {/* Order ID + date */}
@@ -288,9 +307,7 @@ const OrdersList = () => {
                         }
                       >
                         <p className="text-xs text-gray-600">Order ID</p>
-                        <p className="font-semibold text-primary truncate max-w-[240px]">
-                          {order._id}
-                        </p>
+                        <p className="font-semibold text-primary truncate max-w-[240px]">{order._id}</p>
                         <p className="text-xs text-gray-600 dark:text-gray-400">
                           {new Date(order.createdAt).toLocaleString()}
                         </p>
@@ -298,7 +315,7 @@ const OrdersList = () => {
                     </div>
 
                     <div
-                      className="text-gray-600 dark:text-gray-300 cursor-pointer"
+                      className="text-gray-600 dark:text-gray-300 cursor-pointer mt-2 sm:mt-0"
                       onClick={() =>
                         setExpanded((prev) => ({ ...prev, [order._id]: !prev[order._id] }))
                       }
@@ -309,8 +326,12 @@ const OrdersList = () => {
 
                   {isOpen && (
                     <div className="mt-4 space-y-3 text-sm">
-                      <p><strong>Email:</strong> {order.email}</p>
-                      <p><strong>Address:</strong> {formatAddress(order.address)}</p>
+                      <p>
+                        <strong>Email:</strong> {order.email}
+                      </p>
+                      <p>
+                        <strong>Address:</strong> {formatAddress(order.address)}
+                      </p>
 
                       <div className="grid gap-3 sm:grid-cols-2 mt-2">
                         {(order.products || []).map((item, idx) => (
@@ -336,9 +357,10 @@ const OrdersList = () => {
 
                       <p className="mt-3 font-semibold text-green-600 dark:text-green-400">
                         Total: ₹
-                        {(order.products || [])
-                          .reduce((sum, item) => sum + item.quantity * item.price, 0)
-                          .toLocaleString()}
+                        {(order.products || []).reduce(
+                          (sum, item) => sum + item.quantity * item.price,
+                          0
+                        ).toLocaleString()}
                       </p>
                     </div>
                   )}
@@ -348,7 +370,7 @@ const OrdersList = () => {
           </div>
 
           {/* Pagination */}
-          <div className="flex justify-center items-center mt-6 space-x-4">
+          <div className="flex flex-col sm:flex-row justify-center items-center mt-6 space-y-2 sm:space-y-0 sm:space-x-4">
             <button
               disabled={page === 1}
               onClick={() => setPage((p) => p - 1)}

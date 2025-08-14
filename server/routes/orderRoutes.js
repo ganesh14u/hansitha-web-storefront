@@ -27,7 +27,7 @@ router.get("/", async (req, res) => {
  * ✅ PUT /api/orders/:id/status
  * Updates only the deliveryStatus
  */
-router.put("/:id", async (req, res) => {
+router.put("orders/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;

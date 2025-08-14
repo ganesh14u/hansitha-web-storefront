@@ -94,7 +94,7 @@ export function RecentOrders() {
   const refreshOrderStatus = async (orderId: string) => {
     try {
       setRefreshingOrder((prev) => ({ ...prev, [orderId]: true }));
-      const res = await axios.get(`${API_URL}/api/orders`, {
+      const res = await axios.get(`${API_URL}/api/orders/${orderId}/status`, {
         withCredentials: true,
       });
       const allOrders: Order[] = Array.isArray(res.data) ? res.data : [];
