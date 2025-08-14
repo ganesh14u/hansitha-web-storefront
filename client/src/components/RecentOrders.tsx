@@ -37,9 +37,7 @@ export function RecentOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [refreshingOrder, setRefreshingOrder] = useState<
-    Record<string, boolean>
-  >({});
+  const [refreshingOrder, setRefreshingOrder] = useState<Record<string, boolean>>({});
   const API_URL = import.meta.env.VITE_API_URL;
 
   const formatAddress = (
@@ -97,15 +95,14 @@ export function RecentOrders() {
       const res = await axios.get(`${API_URL}/api/orders/${orderId}/status`, {
         withCredentials: true,
       });
-      const allOrders: Order[] = Array.isArray(res.data) ? res.data : [];
+      const updatedOrder: Order = res.data;
 
       setOrders((prevOrders) =>
-        prevOrders.map((order) => {
-          const updatedOrder = allOrders.find((o) => o._id === order._id);
-          return updatedOrder
+        prevOrders.map((order) =>
+          order._id === updatedOrder._id
             ? { ...order, deliveryStatus: updatedOrder.deliveryStatus }
-            : order;
-        })
+            : order
+        )
       );
     } catch (err) {
       console.error("Failed to refresh order status", err);
@@ -159,9 +156,7 @@ export function RecentOrders() {
           Loading recent orders...
         </div>
       ) : orders.length === 0 ? (
-        <p className="text-gray-500 text-center py-6">
-          No recent orders found.
-        </p>
+        <p className="text-gray-500 text-center py-6">No recent orders found.</p>
       ) : (
         <div className="space-y-4">
           {orders.map((order) => {
@@ -198,26 +193,28 @@ export function RecentOrders() {
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-3">
+                  <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap">
+                    {/* Status Badge */}
                     {getStatusBadge(order.deliveryStatus, isRefreshing)}
+
                     {/* Refresh Button */}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="ml-2 px-2 py-1"
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         refreshOrderStatus(order._id);
                       }}
+                      className="ml-2 flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
                     >
-                      ⟳
-                    </Button>
-                    <div className="text-gray-600 dark:text-gray-300">
-                      {isOpen ? (
-                        <ChevronUp size={20} />
+                      {isRefreshing ? (
+                        <Loader className="animate-spin w-4 h-4 text-gray-500" />
                       ) : (
-                        <ChevronDown size={20} />
+                        "⟳"
                       )}
+                    </button>
+
+                    {/* Expand/Collapse */}
+                    <div className="text-gray-600 dark:text-gray-300">
+                      {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                     </div>
                   </div>
                 </div>
