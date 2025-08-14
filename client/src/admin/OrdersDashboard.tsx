@@ -262,9 +262,9 @@ const OrdersList = () => {
                       <div className="flex items-center gap-2">
                         <span
                           className={`px-2 py-0.5 rounded-full text-xs font-medium
-                          ${status === "Processing" ? "bg-yellow-100 text-yellow-800" : ""}
-                          ${status === "Shipping" ? "bg-blue-100 text-blue-800" : ""}
-                          ${status === "Delivered" ? "bg-green-100 text-green-800" : ""}
+                          ${status === "Processing" ? "bg-white text-yellow-500" : ""}
+                          ${status === "Shipping" ? "bg-white text-blue-500" : ""}
+                          ${status === "Delivered" ? "bg-white text-green" : ""}
                         `}
                         >
                           {status}

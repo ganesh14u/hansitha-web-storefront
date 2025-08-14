@@ -17,11 +17,12 @@ interface ProductItem {
 interface Order {
   _id: string;
   email: string;
-  address: string | Record<string, unknown>; // More generic type
+  address: string | Record<string, unknown>;
   products: ProductItem[];
   totalAmount: number;
   createdAt: string;
-  status?: string;
+  status?: string; // optional general status
+  deliveryStatus?: string; // optional delivery-specific status
 }
 
 export function RecentOrders() {
@@ -31,8 +32,10 @@ export function RecentOrders() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Safe formatter for address
-  const formatAddress = (address: string | Record<string, unknown> | undefined) => {
+  // Format address safely
+  const formatAddress = (
+    address: string | Record<string, unknown> | undefined
+  ) => {
     if (!address) return "N/A";
     if (typeof address === "string") return address.trim() || "N/A";
     if (typeof address === "object" && address !== null) {
@@ -62,7 +65,8 @@ export function RecentOrders() {
           .filter((order) => order.email === user.email)
           .sort(
             (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              new Date(b.createdAt).getTime() -
+              new Date(a.createdAt).getTime()
           );
 
         setOrders(filteredSortedOrders.slice(0, 20));
@@ -85,14 +89,17 @@ export function RecentOrders() {
           Loading recent orders...
         </div>
       ) : orders.length === 0 ? (
-        <p className="text-gray-500 text-center py-6">No recent orders found.</p>
+        <p className="text-gray-500 text-center py-6">
+          No recent orders found.
+        </p>
       ) : (
         <div className="space-y-4">
           {orders.map((order) => {
             const isOpen = expanded[order._id] || false;
             const totalPrice = order.products.reduce(
               (sum, item) =>
-                sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
+                sum +
+                (Number(item.price) || 0) * (Number(item.quantity) || 0),
               0
             );
 
@@ -119,8 +126,25 @@ export function RecentOrders() {
                       {new Date(order.createdAt).toLocaleString()}
                     </p>
                   </div>
-                  <div className="text-gray-600 dark:text-gray-300">
-                    {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+
+                  <div className="flex items-center gap-3">
+                    <span
+                          className={`px-4 py-1 rounded-full text-xs font-medium
+                          ${order.deliveryStatus === "Processing" ? "bg-white text-yellow-500" : ""}
+                          ${order.deliveryStatus === "Shipping" ? "bg-white text-blue-500" : ""}
+                          ${order.deliveryStatus === "Delivered" ? "bg-white text-green" : ""}
+                        `}
+                        >
+                          {order.deliveryStatus}
+                        </span>
+                    {/* Dropdown Icon */}
+                    <div className="text-gray-600 dark:text-gray-300">
+                      {isOpen ? (
+                        <ChevronUp size={20} />
+                      ) : (
+                        <ChevronDown size={20} />
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -130,7 +154,8 @@ export function RecentOrders() {
                       <strong>Email:</strong> {order.email}
                     </p>
                     <p>
-                      <strong>Address:</strong> {formatAddress(order.address)}
+                      <strong>Address:</strong>{" "}
+                      {formatAddress(order.address)}
                     </p>
 
                     <div className="grid gap-3 sm:grid-cols-2 mt-2">
