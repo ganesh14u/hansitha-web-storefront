@@ -25,9 +25,6 @@ const Checkout: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [animateTruck, setAnimateTruck] = useState(false);
 
-  const [paymentLink, setPaymentLink] = useState<string | null>(null);
-  const [hasOrdered, setHasOrdered] = useState(false);
-
   // Form state including address
   const [formData, setFormData] = useState({
     email: "",
@@ -99,22 +96,16 @@ const Checkout: React.FC = () => {
   // Calculate subtotal
   const subtotal = getTotalPrice();
 
-  // Redirect to cart if empty and not just ordered
+  // Redirect to cart if empty
   useEffect(() => {
-    if (subtotal === 0 && !hasOrdered) {
+    if (subtotal === 0) {
       navigate("/cart");
     }
-  }, [subtotal, navigate, hasOrdered]);
-
-  // Redirect to payment page on success
-  useEffect(() => {
-    if (hasOrdered && paymentLink) {
-      window.location.href = paymentLink;
-    }
-  }, [hasOrdered, paymentLink]);
+  }, [subtotal, navigate]);
 
   const { shipping, tax, total } = calculatePricing(subtotal);
 
+  // Handle complete order
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -123,51 +114,32 @@ const Checkout: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      const {
-        email,
-        firstName,
-        lastName,
-        phone,
-        address1,
-        address2,
-        city,
-        state,
-        postalCode,
-        country,
-      } = formData;
+      const { email, firstName, lastName, phone, address1, address2, city, state, postalCode, country } = formData;
 
-      // Send data with correct keys matching backend payment-link route
+      // 1️⃣ Only generate payment link, DO NOT save order in DB yet
       const res = await axios.post(`${API_URL}/api/payment/payment-link`, {
         totalAmount: total,
         cartItems,
         userName: `${firstName} ${lastName}`,
         userEmail: email,
         userPhone: phone,
-        shippingAddress: {
-          address1,
-          address2,
-          city,
-          state,
-          postalCode,
-          country,
-        },
+        shippingAddress: { address1, address2, city, state, postalCode, country },
       });
 
       const link = res.data.paymentLink.short_url;
 
-      // Let animation play a bit
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Let truck animation play a little
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      setPaymentLink(link);
-      setHasOrdered(true);
+      // Redirect user to Razorpay Payment Page
+      window.location.href = link;
     } catch (err) {
       console.error("Error:", err);
       toast({
         title: "Error",
-        description: "Failed to get payment link",
+        description: "Failed to generate payment link",
         variant: "destructive",
       });
-
       setAnimateTruck(false);
     } finally {
       setIsProcessing(false);
@@ -183,6 +155,7 @@ const Checkout: React.FC = () => {
             onSubmit={handleSubmit}
             className="grid grid-cols-1 lg:grid-cols-2 gap-8"
           >
+            {/* Contact + Shipping Forms */}
             <div className="space-y-6">
               <CheckoutSection
                 icon={<User className="w-5 h-5" />}
@@ -213,6 +186,7 @@ const Checkout: React.FC = () => {
               />
             </div>
 
+            {/* Order Summary */}
             <div className="lg:sticky lg:top-8 lg:self-start">
               <Card>
                 <CardHeader>
@@ -221,10 +195,7 @@ const Checkout: React.FC = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {cartItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center space-x-4"
-                      >
+                      <div key={item.id} className="flex items-center space-x-4">
                         <img
                           src={item.image}
                           alt={item.name}
@@ -232,9 +203,7 @@ const Checkout: React.FC = () => {
                         />
                         <div className="flex-1">
                           <h3 className="text-sm font-medium">{item.name}</h3>
-                          <p className="text-gray-600 text-sm">
-                            Qty: {item.quantity}
-                          </p>
+                          <p className="text-gray-600 text-sm">Qty: {item.quantity}</p>
                         </div>
                         <p className="font-medium">
                           ₹
@@ -284,8 +253,7 @@ const Checkout: React.FC = () => {
                     </div>
 
                     <p className="text-sm text-center text-gray-600 flex items-center justify-center gap-1 mt-2">
-                      <Lock className="w-3 h-3" /> Your order details are safe and
-                      secure.
+                      <Lock className="w-3 h-3" /> Your order details are safe and secure.
                     </p>
                   </div>
                 </CardContent>
@@ -300,7 +268,9 @@ const Checkout: React.FC = () => {
 
 export default Checkout;
 
-// Reusable components
+// --------------------------
+// Reusable Components
+// --------------------------
 
 const InputGroup = ({
   id,
