@@ -67,6 +67,27 @@ router.put("/:id/status", async (req, res) => {
   }
 });
 
+router.get("/:id/status", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      return res.status(400).json({ message: "Invalid order id format" });
+    }
+
+    const order = await Order.findById(id).select("deliveryStatus");
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.json(order); // returns { _id, deliveryStatus }
+  } catch (error) {
+    console.error("Error fetching order status:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 /**
  * POST /api/orders/webhook
  * Razorpay webhook — create order after successful payment
@@ -126,10 +147,10 @@ router.post("/webhook", express.json({ type: "*/*" }), async (req, res) => {
         email,
         phone,
         amount: totalAmount,
-        paymentStatus: "paid",          // ✅ payment status
-        deliveryStatus: "Processing",    // ✅ default delivery stage
+        paymentStatus: "paid", // ✅ payment status
+        deliveryStatus: "Processing", // ✅ default delivery stage
         products,
-        address,                         // ✅ persist shipping address
+        address, // ✅ persist shipping address
         createdAt: paymentEntity.created_at
           ? new Date(paymentEntity.created_at * 1000)
           : new Date(),
@@ -151,7 +172,9 @@ router.post("/webhook", express.json({ type: "*/*" }), async (req, res) => {
       }
 
       console.log("✅ Order created after payment:", savedOrder._id);
-      return res.status(200).json({ success: true, updatedStock: updatedStocks });
+      return res
+        .status(200)
+        .json({ success: true, updatedStock: updatedStocks });
     }
 
     // Other events: acknowledge

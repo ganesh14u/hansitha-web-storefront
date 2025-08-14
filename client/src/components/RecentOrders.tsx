@@ -37,7 +37,9 @@ export function RecentOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [refreshingOrder, setRefreshingOrder] = useState<Record<string, boolean>>({});
+  const [refreshingOrder, setRefreshingOrder] = useState<
+    Record<string, boolean>
+  >({});
   const API_URL = import.meta.env.VITE_API_URL;
 
   const formatAddress = (
@@ -92,9 +94,12 @@ export function RecentOrders() {
   const refreshOrderStatus = async (orderId: string) => {
     try {
       setRefreshingOrder((prev) => ({ ...prev, [orderId]: true }));
+
+      // GET the latest status for a single order
       const res = await axios.get(`${API_URL}/api/orders/${orderId}/status`, {
         withCredentials: true,
       });
+
       const updatedOrder: Order = res.data;
 
       setOrders((prevOrders) =>
@@ -156,7 +161,9 @@ export function RecentOrders() {
           Loading recent orders...
         </div>
       ) : orders.length === 0 ? (
-        <p className="text-gray-500 text-center py-6">No recent orders found.</p>
+        <p className="text-gray-500 text-center py-6">
+          No recent orders found.
+        </p>
       ) : (
         <div className="space-y-4">
           {orders.map((order) => {
@@ -214,7 +221,11 @@ export function RecentOrders() {
 
                     {/* Expand/Collapse */}
                     <div className="text-gray-600 dark:text-gray-300">
-                      {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                      {isOpen ? (
+                        <ChevronUp size={20} />
+                      ) : (
+                        <ChevronDown size={20} />
+                      )}
                     </div>
                   </div>
                 </div>
