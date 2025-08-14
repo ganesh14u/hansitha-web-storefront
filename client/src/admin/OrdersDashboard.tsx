@@ -11,7 +11,6 @@ import {
   ChevronRight,
   Loader,
   Search,
-  RefreshCcw,
 } from "lucide-react";
 
 interface ProductItem {
@@ -34,10 +33,12 @@ interface Address {
 
 interface Order {
   _id: string;
+  name?: string;
   email: string;
   address?: string | Address;
   products: ProductItem[];
-  totalAmount?: number;
+  amount?: number;
+  totalAmount?: number; // for compatibility if backend returns amount
   createdAt: string;
   paymentStatus?: "pending" | "paid" | "failed";
   deliveryStatus?: "Processing" | "Shipping" | "Delivered";
@@ -53,7 +54,6 @@ const OrdersList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [page, setPage] = useState(1);
-  const [statusLoading, setStatusLoading] = useState<Record<string, boolean>>({});
 
   const perPage = 5;
   const API_URL = import.meta.env.VITE_API_URL;
@@ -68,9 +68,7 @@ const OrdersList = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/orders`, {
-        withCredentials: true,
-      });
+      const response = await axios.get(`${API_URL}/api/orders`, { withCredentials: true });
       const data: Order[] = response.data;
       setOrders(data);
       setFiltered(data);
@@ -84,7 +82,6 @@ const OrdersList = () => {
 
   const filterOrders = () => {
     let filteredData = [...orders];
-
     if (fromDate) {
       const [year, month, day] = fromDate.split("-").map(Number);
       const from = new Date(year, month - 1, day).getTime();
@@ -92,7 +89,6 @@ const OrdersList = () => {
         (order) => new Date(order.createdAt).getTime() >= from
       );
     }
-
     if (toDate) {
       const [year, month, day] = toDate.split("-").map(Number);
       const to = new Date(year, month - 1, day, 23, 59, 59, 999).getTime();
@@ -100,7 +96,6 @@ const OrdersList = () => {
         (order) => new Date(order.createdAt).getTime() <= to
       );
     }
-
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filteredData = filteredData.filter(
@@ -109,7 +104,6 @@ const OrdersList = () => {
           (order.email || "").toLowerCase().includes(query)
       );
     }
-
     setFiltered(filteredData);
     setPage(1);
   };
@@ -120,8 +114,12 @@ const OrdersList = () => {
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
-    setStatusLoading((prev) => ({ ...prev, [orderId]: true }));
     try {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o._id === orderId ? { ...o, deliveryStatus: newStatus as Order["deliveryStatus"] } : o
+        )
+      );
       const { data } = await axios.put(
         `${API_URL}/api/orders/${orderId}/status`,
         { status: newStatus },
@@ -134,26 +132,7 @@ const OrdersList = () => {
     } catch (error) {
       toast.error("Failed to update status");
       console.error(error);
-    } finally {
-      setStatusLoading((prev) => ({ ...prev, [orderId]: false }));
-    }
-  };
-
-  const refreshOrderStatus = async (orderId: string) => {
-    setStatusLoading((prev) => ({ ...prev, [orderId]: true }));
-    try {
-      const { data } = await axios.get(`${API_URL}/api/orders/${orderId}`, {
-        withCredentials: true,
-      });
-      setOrders((prev) =>
-        prev.map((o) => (o._id === orderId ? { ...o, deliveryStatus: data.deliveryStatus } : o))
-      );
-      toast.success("Status refreshed!");
-    } catch (error) {
-      toast.error("Failed to refresh status");
-      console.error(error);
-    } finally {
-      setStatusLoading((prev) => ({ ...prev, [orderId]: false }));
+      fetchOrders();
     }
   };
 
@@ -162,21 +141,18 @@ const OrdersList = () => {
 
   const handleArrowNavigation = (e: KeyboardEvent) => {
     if (e.key === "ArrowRight" && page < totalPages) setPage((p) => p + 1);
-    if (e.key === "ArrowLeft" && page > 1) setPage((p) => p - 1);
+    else if (e.key === "ArrowLeft" && page > 1) setPage((p) => p - 1);
   };
 
   useEffect(() => {
     fetchOrders();
     const socket = io(API_URL, { withCredentials: true });
     socket.on("newOrder", handleNewOrder);
-    socket.on(
-      "orderStatusUpdated",
-      (payload: { _id: string; deliveryStatus: Order["deliveryStatus"] }) => {
-        setOrders((prev) =>
-          prev.map((o) => (o._id === payload._id ? { ...o, deliveryStatus: payload.deliveryStatus } : o))
-        );
-      }
-    );
+    socket.on("orderStatusUpdated", (payload: { _id: string; deliveryStatus: Order["deliveryStatus"] }) => {
+      setOrders((prev) =>
+        prev.map((o) => (o._id === payload._id ? { ...o, deliveryStatus: payload.deliveryStatus } : o))
+      );
+    });
     window.addEventListener("keydown", handleArrowNavigation);
     return () => {
       socket.disconnect();
@@ -184,32 +160,19 @@ const OrdersList = () => {
     };
   }, []);
 
-  useEffect(() => {
-    filterOrders();
-  }, [fromDate, toDate, searchQuery, orders]);
+  useEffect(() => filterOrders(), [fromDate, toDate, searchQuery, orders]);
 
   useEffect(() => {
     const revenue = filtered.reduce((sum, order) => {
       const itemsTotal = (order.products || []).reduce((total, item) => {
-        return total + (Number(item.price) || 0) * (Number(item.quantity) || 0);
+        const price = Number(item.price) || 0;
+        const qty = Number(item.quantity) || 0;
+        return total + qty * price;
       }, 0);
       return sum + itemsTotal;
     }, 0);
     setTotalRevenue(revenue);
   }, [filtered]);
-
-  const getBadgeColor = (status: string) => {
-    switch (status) {
-      case "Processing":
-        return "bg-white text-yellow-500";
-      case "Shipping":
-        return "bg-white text-blue-500";
-      case "Delivered":
-        return "bg-white text-green";
-      default:
-        return "bg-gray-200 text-gray-500";
-    }
-  };
 
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-md p-4 sm:p-6">
@@ -217,19 +180,21 @@ const OrdersList = () => {
       <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4">🛒 Orders Overview</h2>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
-        <div className="bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 p-3 sm:p-4 rounded-lg shadow">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <div className="bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 p-3 rounded-lg shadow text-center sm:text-left">
           <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Total Revenue</p>
-          <p className="text-lg sm:text-xl font-bold text-black dark:text-white">₹{totalRevenue.toLocaleString()}</p>
+          <p className="text-lg sm:text-xl font-bold text-black dark:text-white">
+            ₹{totalRevenue.toLocaleString()}
+          </p>
         </div>
-        <div className="bg-gradient-to-r from-pink-100 to-pink-200 dark:from-neutral-800 dark:to-neutral-700 p-3 sm:p-4 rounded-lg shadow">
+        <div className="bg-gradient-to-r from-pink-100 to-pink-200 dark:from-neutral-800 dark:to-neutral-700 p-3 rounded-lg shadow text-center sm:text-left">
           <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Total Orders</p>
           <p className="text-lg sm:text-xl font-bold text-black dark:text-white">{filtered.length}</p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <input
           type="date"
           value={fromDate}
@@ -242,7 +207,7 @@ const OrdersList = () => {
           onChange={(e) => setToDate(e.target.value)}
           className="px-3 py-2 border rounded-md text-sm w-full dark:bg-neutral-800"
         />
-        <div className="relative">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
           <input
             type="text"
@@ -256,7 +221,8 @@ const OrdersList = () => {
 
       {loading ? (
         <div className="flex items-center justify-center text-primary animate-pulse py-10">
-          <Loader className="animate-spin w-6 h-6 mr-2" /> Loading orders...
+          <Loader className="animate-spin w-6 h-6 mr-2" />
+          Loading orders...
         </div>
       ) : filtered.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400 text-center py-10">No orders found.</p>
@@ -271,11 +237,17 @@ const OrdersList = () => {
                   key={order._id}
                   className="border rounded-xl p-4 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 hover:brightness-105 transition-all duration-200"
                 >
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Delivery Status Badge + Dropdown + Refresh */}
-                      <div className="flex items-center gap-1">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getBadgeColor(status)}`}>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+                      {/* Delivery Status + Dropdown */}
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium
+                          ${status === "Processing" ? "bg-yellow-100 text-yellow-800" : ""}
+                          ${status === "Shipping" ? "bg-blue-100 text-blue-800" : ""}
+                          ${status === "Delivered" ? "bg-green-100 text-green-800" : ""}
+                        `}
+                        >
                           {status}
                         </span>
                         <select
@@ -287,27 +259,19 @@ const OrdersList = () => {
                           <option value="Shipping">Shipping</option>
                           <option value="Delivered">Delivered</option>
                         </select>
-                        <button
-                          onClick={() => refreshOrderStatus(order._id)}
-                          className="p-1 rounded hover:bg-gray-200 dark:hover:bg-neutral-700"
-                        >
-                          {statusLoading[order._id] ? (
-                            <Loader className="w-4 h-4 animate-spin text-gray-600" />
-                          ) : (
-                            <RefreshCcw className="w-4 h-4 text-gray-600" />
-                          )}
-                        </button>
                       </div>
 
-                      {/* Order ID + date */}
+                      {/* Order Info */}
                       <div
-                        className="cursor-pointer"
+                        className="cursor-pointer flex-1"
                         onClick={() =>
                           setExpanded((prev) => ({ ...prev, [order._id]: !prev[order._id] }))
                         }
                       >
                         <p className="text-xs text-gray-600">Order ID</p>
-                        <p className="font-semibold text-primary truncate max-w-[240px]">{order._id}</p>
+                        <p className="font-semibold text-primary truncate max-w-full">
+                          {order._id}
+                        </p>
                         <p className="text-xs text-gray-600 dark:text-gray-400">
                           {new Date(order.createdAt).toLocaleString()}
                         </p>
@@ -326,18 +290,14 @@ const OrdersList = () => {
 
                   {isOpen && (
                     <div className="mt-4 space-y-3 text-sm">
-                      <p>
-                        <strong>Email:</strong> {order.email}
-                      </p>
-                      <p>
-                        <strong>Address:</strong> {formatAddress(order.address)}
-                      </p>
+                      <p><strong>Email:</strong> {order.email}</p>
+                      <p><strong>Address:</strong> {formatAddress(order.address)}</p>
 
-                      <div className="grid gap-3 sm:grid-cols-2 mt-2">
+                      <div className="grid gap-3 sm:grid-cols-2 mt-2 overflow-x-auto">
                         {(order.products || []).map((item, idx) => (
                           <div
                             key={item._id || item.id || idx}
-                            className="flex items-center gap-3 bg-white dark:bg-neutral-900 rounded-lg p-2 border"
+                            className="flex items-center gap-3 bg-white dark:bg-neutral-900 rounded-lg p-2 border min-w-[220px]"
                           >
                             <img
                               src={item.image}
