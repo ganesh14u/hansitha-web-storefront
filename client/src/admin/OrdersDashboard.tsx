@@ -1,3 +1,4 @@
+// OrdersList.tsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -32,12 +33,15 @@ interface Address {
 
 interface Order {
   _id: string;
+  name?: string;
   email: string;
-  address: string | Address;
+  address?: string | Address;
   products: ProductItem[];
-  totalAmount: number;
+  amount?: number;
+  totalAmount?: number; // for compatibility if backend returns amount
   createdAt: string;
-  status?: string; // ✅ added
+  paymentStatus?: "pending" | "paid" | "failed";
+  deliveryStatus?: "Processing" | "Shipping" | "Delivered";
 }
 
 const OrdersList = () => {
@@ -54,7 +58,7 @@ const OrdersList = () => {
   const perPage = 5;
   const API_URL = import.meta.env.VITE_API_URL;
 
-  const formatAddress = (addr: string | Address) => {
+  const formatAddress = (addr?: string | Address) => {
     if (!addr) return "No address provided";
     if (typeof addr === "string") return addr;
     return `${addr.address1 || ""}${addr.address2 ? ", " + addr.address2 : ""}, ${
@@ -72,6 +76,7 @@ const OrdersList = () => {
       setFiltered(data);
     } catch (error) {
       console.error("Failed to fetch orders", error);
+      toast.error("Failed to fetch orders");
     } finally {
       setLoading(false);
     }
@@ -101,7 +106,7 @@ const OrdersList = () => {
       filteredData = filteredData.filter(
         (order) =>
           order._id.toLowerCase().includes(query) ||
-          order.email.toLowerCase().includes(query)
+          (order.email || "").toLowerCase().includes(query)
       );
     }
 
@@ -116,20 +121,29 @@ const OrdersList = () => {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      await axios.put(
+      // Optimistic UI (optional)
+      setOrders((prev) =>
+        prev.map((o) =>
+          o._id === orderId ? { ...o, deliveryStatus: newStatus as Order["deliveryStatus"] } : o
+        )
+      );
+
+      const { data } = await axios.put(
         `${API_URL}/api/orders/${orderId}/status`,
         { status: newStatus },
         { withCredentials: true }
       );
-      toast.success(`Status updated to "${newStatus}"`);
+
+      // Ensure local state mirrors server
       setOrders((prev) =>
-        prev.map((o) =>
-          o._id === orderId ? { ...o, status: newStatus } : o
-        )
+        prev.map((o) => (o._id === orderId ? { ...o, deliveryStatus: data.deliveryStatus } : o))
       );
+      toast.success(`Status updated to "${newStatus}"`);
     } catch (error) {
       toast.error("Failed to update status");
       console.error(error);
+      // Re-fetch to restore server truth if optimistic update failed
+      fetchOrders();
     }
   };
 
@@ -148,11 +162,17 @@ const OrdersList = () => {
     fetchOrders();
     const socket = io(API_URL, { withCredentials: true });
     socket.on("newOrder", handleNewOrder);
+    socket.on("orderStatusUpdated", (payload: { _id: string; deliveryStatus: Order["deliveryStatus"] }) => {
+      setOrders((prev) =>
+        prev.map((o) => (o._id === payload._id ? { ...o, deliveryStatus: payload.deliveryStatus } : o))
+      );
+    });
     window.addEventListener("keydown", handleArrowNavigation);
     return () => {
       socket.disconnect();
       window.removeEventListener("keydown", handleArrowNavigation);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -161,12 +181,12 @@ const OrdersList = () => {
 
   useEffect(() => {
     const revenue = filtered.reduce((sum, order) => {
-      const orderTotal = order.products.reduce((total, item) => {
+      const itemsTotal = (order.products || []).reduce((total, item) => {
         const price = Number(item.price) || 0;
-        const quantity = Number(item.quantity) || 0;
-        return total + quantity * price;
+        const qty = Number(item.quantity) || 0;
+        return total + qty * price;
       }, 0);
-      return sum + orderTotal;
+      return sum + itemsTotal;
     }, 0);
     setTotalRevenue(revenue);
   }, [filtered]);
@@ -181,20 +201,14 @@ const OrdersList = () => {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <div className="bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 p-3 sm:p-4 rounded-lg shadow">
-          <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-            Total Revenue
-          </p>
+          <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Total Revenue</p>
           <p className="text-lg sm:text-xl font-bold text-black dark:text-white">
             ₹{totalRevenue.toLocaleString()}
           </p>
         </div>
         <div className="bg-gradient-to-r from-pink-100 to-pink-200 dark:from-neutral-800 dark:to-neutral-700 p-3 sm:p-4 rounded-lg shadow">
-          <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-            Total Orders
-          </p>
-          <p className="text-lg sm:text-xl font-bold text-black dark:text-white">
-            {filtered.length}
-          </p>
+          <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Total Orders</p>
+          <p className="text-lg sm:text-xl font-bold text-black dark:text-white">{filtered.length}</p>
         </div>
       </div>
 
@@ -230,14 +244,13 @@ const OrdersList = () => {
           Loading orders...
         </div>
       ) : filtered.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400 text-center py-10">
-          No orders found.
-        </p>
+        <p className="text-gray-500 dark:text-gray-400 text-center py-10">No orders found.</p>
       ) : (
         <>
           <div className="space-y-4">
             {paginatedOrders.map((order) => {
               const isOpen = expanded[order._id] || false;
+              const status = order.deliveryStatus || "Processing";
               return (
                 <div
                   key={order._id}
@@ -245,27 +258,33 @@ const OrdersList = () => {
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      {/* ✅ Delivery Status Dropdown */}
-                      <select
-                        value={order.status || "Processing"}
-                        onChange={(e) =>
-                          updateOrderStatus(order._id, e.target.value)
-                        }
-                        className="px-2 py-1 text-sm border rounded-md dark:bg-neutral-800"
-                      >
-                        <option value="Processing">Processing</option>
-                        <option value="Shipping">Shipping</option>
-                        <option value="Delivered">Delivered</option>
-                      </select>
+                      {/* ✅ Delivery Status Badge + Dropdown */}
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium
+                          ${status === "Processing" ? "bg-yellow-100 text-yellow-800" : ""}
+                          ${status === "Shipping" ? "bg-blue-100 text-blue-800" : ""}
+                          ${status === "Delivered" ? "bg-green-100 text-green-800" : ""}
+                        `}
+                        >
+                          {status}
+                        </span>
+                        <select
+                          value={status}
+                          onChange={(e) => updateOrderStatus(order._id, e.target.value)}
+                          className="px-2 py-1 text-sm border rounded-md dark:bg-neutral-800"
+                        >
+                          <option value="Processing">Processing</option>
+                          <option value="Shipping">Shipping</option>
+                          <option value="Delivered">Delivered</option>
+                        </select>
+                      </div>
 
                       {/* Order ID + date */}
                       <div
                         className="cursor-pointer"
                         onClick={() =>
-                          setExpanded((prev) => ({
-                            ...prev,
-                            [order._id]: !prev[order._id],
-                          }))
+                          setExpanded((prev) => ({ ...prev, [order._id]: !prev[order._id] }))
                         }
                       >
                         <p className="text-xs text-gray-600">Order ID</p>
@@ -278,12 +297,10 @@ const OrdersList = () => {
                       </div>
                     </div>
 
-                    <div className="text-gray-600 dark:text-gray-300 cursor-pointer"
+                    <div
+                      className="text-gray-600 dark:text-gray-300 cursor-pointer"
                       onClick={() =>
-                        setExpanded((prev) => ({
-                          ...prev,
-                          [order._id]: !prev[order._id],
-                        }))
+                        setExpanded((prev) => ({ ...prev, [order._id]: !prev[order._id] }))
                       }
                     >
                       {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -292,15 +309,11 @@ const OrdersList = () => {
 
                   {isOpen && (
                     <div className="mt-4 space-y-3 text-sm">
-                      <p>
-                        <strong>Email:</strong> {order.email}
-                      </p>
-                      <p>
-                        <strong>Address:</strong> {formatAddress(order.address)}
-                      </p>
+                      <p><strong>Email:</strong> {order.email}</p>
+                      <p><strong>Address:</strong> {formatAddress(order.address)}</p>
 
                       <div className="grid gap-3 sm:grid-cols-2 mt-2">
-                        {order.products.map((item, idx) => (
+                        {(order.products || []).map((item, idx) => (
                           <div
                             key={item._id || item.id || idx}
                             className="flex items-center gap-3 bg-white dark:bg-neutral-900 rounded-lg p-2 border"
@@ -323,11 +336,8 @@ const OrdersList = () => {
 
                       <p className="mt-3 font-semibold text-green-600 dark:text-green-400">
                         Total: ₹
-                        {order.products
-                          .reduce(
-                            (sum, item) => sum + item.quantity * item.price,
-                            0
-                          )
+                        {(order.products || [])
+                          .reduce((sum, item) => sum + item.quantity * item.price, 0)
                           .toLocaleString()}
                       </p>
                     </div>
